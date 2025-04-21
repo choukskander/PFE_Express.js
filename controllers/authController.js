@@ -1,208 +1,253 @@
-// const User = require("../models/User");
-// const jwt = require("jsonwebtoken");
-// const bcrypt = require("bcryptjs");
-
-// const generateToken = (id) => {
-//   return jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: "1h" });
-// };
-
-// exports.register = async (req, res) => {
-//   try {
-//     const { nom, prenom, email, password, role } = req.body;
-
-//     console.log("📥 Données reçues :", req.body);
-
-//     // Vérification des champs requis
-//     if (!nom || !prenom || !email || !password || !role) {
-//       return res.status(400).json({ message: "Tous les champs sont requis." });
-//     }
-
-//     // Vérification de l'unicité de l'email
-//     const existingUser = await User.findOne({ email });
-//     if (existingUser) {
-//       return res.status(400).json({ message: "Un utilisateur avec cet email existe déjà." });
-//     }
-
-//     // Hash du mot de passe
-//     const hashedPassword = await bcrypt.hash(password, 10);
-
-//     // Création de l'utilisateur
-//     const newUser = new User({
-//       nom,
-//       prenom,
-//       email,
-//       password: hashedPassword,
-//       role,
-//     });
-
-//     await newUser.save();
-
-//     // Création du token
-//     const token = generateToken(newUser._id);
-
-//     res.status(201).json({
-//       message: "Inscription réussie.",
-//       token,
-//       user: {
-//         id: newUser._id,
-//         nom: newUser.nom,
-//         prenom: newUser.prenom,
-//         email: newUser.email,
-//         role: newUser.role,
-//       },
-//     });
-//   } catch (error) {
-//     console.error("❌ Erreur dans register :", error.message);
-//     res.status(500).json({ message: "Erreur interne du serveur." });
-//   }
-// };
-
-// exports.login = async (req, res) => {
-//   const { email, password } = req.body;
-
-//   try {
-//     const user = await User.findOne({ email });
-
-//     if (user && (await bcrypt.compare(password, user.password))) {
-//       res.json({
-//         _id: user.id,
-//         nom: user.nom,
-//         prenom: user.prenom,
-//         email: user.email,
-//         role: user.role,
-//         token: generateToken(user.id),
-//       });
-//     } else {
-//       res.status(401).json({ message: "Identifiants invalides" });
-//     }
-//   } catch (error) {
-//     console.error("Erreur login :", error);
-//     res.status(500).json({ message: "Erreur du serveur" });
-//   }
-// };
 const User = require("../models/User");
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
-const multer = require("multer");
-const path = require("path");
+const cloudinary = require('cloudinary').v2;
+const asyncHandler = require('express-async-handler');
 
-// Configuration de multer pour stocker les fichiers
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, "uploads/");
-  },
-  filename: (req, file, cb) => {
-    cb(null, Date.now() + path.extname(file.originalname));
-  },
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
 });
-const upload = multer({
-  storage,
-  fileFilter: (req, file, cb) => {
-    const filetypes = /jpeg|jpg|png|pdf/;
-    const extname = filetypes.test(path.extname(file.originalname).toLowerCase());
-    const mimetype = filetypes.test(file.mimetype);
-    if (extname && mimetype) {
-      cb(null, true);
-    } else {
-      cb(new Error("Seuls les fichiers JPG, JPEG, PNG et PDF sont autorisés."));
-    }
-  },
-}).single("licenceProfessionnelle");
 
 const generateToken = (id) => {
   return jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: "1h" });
 };
 
-exports.register = async (req, res) => {
-  upload(req, res, async (err) => {
-    if (err) {
-      return res.status(400).json({ message: err.message });
+exports.register = asyncHandler(async (req, res) => {
+  console.log("Register - Request body:", req.body, "Files:", req.files);
+
+  const { nom, prenom, email, password, role, specialite } = req.body;
+  const licenceProfessionnelle = req.files?.licenceProfessionnelle;
+
+  if (!nom || !prenom || !email || !password || !role) {
+    return res.status(400).json({ message: "Tous les champs sont requis." });
+  }
+
+  if (role === "internaute" && (!specialite || !licenceProfessionnelle)) {
+    return res.status(400).json({
+      message: "La spécialité et la licence professionnelle sont requises pour les internautes.",
+    });
+  }
+
+  const existingUser = await User.findOne({ email });
+  if (existingUser) {
+    return res.status(400).json({ message: "Un utilisateur avec cet email existe déjà." });
+  }
+
+  // Validate licenceProfessionnelle
+  let licenceUrl;
+  if (licenceProfessionnelle) {
+    const allowedTypes = ['image/jpeg', 'image/png', 'application/pdf'];
+    if (!allowedTypes.includes(licenceProfessionnelle.mimetype)) {
+      return res.status(400).json({ message: "Seuls les fichiers JPG, PNG et PDF sont autorisés pour la licence." });
+    }
+    if (licenceProfessionnelle.size > 5 * 1024 * 1024) {
+      return res.status(400).json({ message: "La licence ne doit pas dépasser 5MB." });
     }
 
     try {
-      const { nom, prenom, email, password, role, specialite } = req.body;
-
-      console.log("Données reçues par le serveur :", req.body, "Fichier :", req.file);
-
-      // Vérification des champs requis
-      if (!nom || !prenom || !email || !password || !role) {
-        return res.status(400).json({ message: "Tous les champs sont requis." });
-      }
-
-      // Vérification spécifique pour internaute
-      if (role === "internaute" && (!specialite || !req.file)) {
-        return res.status(400).json({
-          message: "La spécialité et la licence professionnelle sont requises pour les internautes.",
-        });
-      }
-
-      // Vérification de l'unicité de l'email
-      const existingUser = await User.findOne({ email });
-      if (existingUser) {
-        return res.status(400).json({ message: "Un utilisateur avec cet email existe déjà." });
-      }
-
-      // Hash du mot de passe
-      const hashedPassword = await bcrypt.hash(password, 10);
-
-      // Création de l'utilisateur
-      const newUser = new User({
-        nom,
-        prenom,
-        email,
-        password: hashedPassword,
-        role,
-        specialite: role === "internaute" ? specialite : undefined,
-        licenceProfessionnelle: req.file ? `/uploads/${req.file.filename}` : undefined,
+      const result = await cloudinary.uploader.upload(licenceProfessionnelle.tempFilePath, {
+        folder: 'licences',
+        resource_type: 'auto',
       });
-
-      await newUser.save();
-
-      // Création du token
-      const token = generateToken(newUser._id);
-
-      res.status(201).json({
-        message: "Inscription réussie.",
-        token,
-        user: {
-          id: newUser._id,
-          nom: newUser.nom,
-          prenom: newUser.prenom,
-          email: newUser.email,
-          role: newUser.role,
-          specialite: newUser.specialite,
-          licenceProfessionnelle: newUser.licenceProfessionnelle,
-        },
-      });
+      licenceUrl = result.secure_url;
     } catch (error) {
-      console.error("❌ Erreur dans register :", error.message);
-      res.status(500).json({ message: "Erreur interne du serveur." });
+      console.error('Cloudinary upload error (licence):', error);
+      return res.status(500).json({ message: "Erreur lors du téléchargement de la licence." });
     }
-  });
-};
+  }
 
-exports.login = async (req, res) => {
+  const hashedPassword = await bcrypt.hash(password, 10);
+
+  const newUser = new User({
+    nom,
+    prenom,
+    email,
+    password: hashedPassword,
+    role,
+    specialite: role === "internaute" ? specialite : undefined,
+    licenceProfessionnelle: licenceUrl,
+  });
+
+  await newUser.save();
+
+  const token = generateToken(newUser._id);
+
+  res.status(201).json({
+    message: "Inscription réussie.",
+    token,
+    user: {
+      _id: newUser._id,
+      nom: newUser.nom,
+      prenom: newUser.prenom,
+      email: newUser.email,
+      role: NewUser.role,
+      specialite: newUser.specialite,
+      licenceProfessionnelle: newUser.licenceProfessionnelle,
+    },
+  });
+});
+
+exports.login = asyncHandler(async (req, res) => {
   const { email, password } = req.body;
 
-  try {
-    const user = await User.findOne({ email });
+  const user = await User.findOne({ email });
 
-    if (user && (await bcrypt.compare(password, user.password))) {
-      res.json({
-        _id: user.id,
-        nom: user.nom,
-        prenom: user.prenom,
-        email: user.email,
-        role: user.role,
-        specialite: user.specialite,
-        licenceProfessionnelle: user.licenceProfessionnelle,
-        token: generateToken(user.id),
-      });
-    } else {
-      res.status(401).json({ message: "Identifiants invalides" });
-    }
-  } catch (error) {
-    console.error("Erreur login :", error);
-    res.status(500).json({ message: "Erreur du serveur" });
+  if (user && (await bcrypt.compare(password, user.password))) {
+    res.json({
+      _id: user._id,
+      nom: user.nom,
+      prenom: user.prenom,
+      email: user.email,
+      role: user.role,
+      specialite: user.specialite,
+      licenceProfessionnelle: user.licenceProfessionnelle,
+      profileImage: user.profileImage,
+      token: generateToken(user._id),
+    });
+  } else {
+    res.status(401).json({ message: "Identifiants invalides" });
   }
-};
+});
+
+exports.updateUserProfile = asyncHandler(async (req, res) => {
+  console.log('Update Profile - Request body:', req.body, 'Files:', req.files);
+
+  const user = await User.findById(req.user.id);
+  if (!user) {
+    return res.status(404).json({ message: 'Utilisateur non trouvé' });
+  }
+
+  const { nom, prenom, email, password, specialite, ville, localisation } = req.body;
+  const profileImage = req.files?.profileImage;
+
+  // Validate email uniqueness
+  if (email && email !== user.email) {
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      return res.status(400).json({ message: "Cet email est déjà utilisé." });
+    }
+  }
+
+  // Update fields
+  user.nom = nom || user.nom;
+  user.prenom = prenom || user.prenom;
+  user.email = email || user.email;
+  if (user.role === 'internaute') {
+    user.specialite = specialite || user.specialite;
+    user.ville = ville || user.ville;
+    user.localisation = localisation || user.localisation;
+  }
+  if (password && password.trim() !== '') {
+    user.password = await bcrypt.hash(password, 10);
+  }
+
+  // Handle profile image
+  if (profileImage) {
+    const allowedTypes = ['image/jpeg', 'image/png'];
+    if (!allowedTypes.includes(profileImage.mimetype)) {
+      return res.status(400).json({ message: "Seuls les fichiers JPG et PNG sont autorisés pour l'image de profil." });
+    }
+    if (profileImage.size > 5 * 1024 * 1024) {
+      return res.status(400).json({ message: "L'image de profil ne doit pas dépasser 5MB." });
+    }
+
+    try {
+      const result = await cloudinary.uploader.upload(profileImage.tempFilePath, {
+        folder: 'user_profiles',
+        resource_type: 'image',
+      });
+      user.profileImage = result.secure_url;
+    } catch (error) {
+      console.error('Cloudinary upload error (profile):', error);
+      return res.status(500).json({ message: "Erreur lors du téléchargement de l'image de profil." });
+    }
+  }
+
+  const updatedUser = await user.save();
+
+  res.json({
+    _id: updatedUser._id,
+    nom: updatedUser.nom,
+    prenom: updatedUser.prenom,
+    email: updatedUser.email,
+    role: updatedUser.role,
+    specialite: updatedUser.specialite,
+    profileImage: updatedUser.profileImage,
+    ville: updatedUser.ville,
+    localisation: updatedUser.localisation,
+  });
+});
+
+// exports.searchDoctorsByCity = asyncHandler(async (req, res) => {
+//   let { ville } = req.query;
+//   console.log('SearchDoctorsByCity - Ville reçue:', ville);
+
+//   if (!ville) {
+//     return res.status(400).json({ message: 'Ville est requise' });
+//   }
+
+//   // Nettoyer la valeur de ville
+//   ville = ville.trim();
+//   if (!ville) {
+//     return res.status(400).json({ message: 'Ville ne peut pas être vide après nettoyage' });
+//   }
+
+//   try {
+//     const doctors = await User.find({
+//       role: 'internaute',
+//       ville: { $regex: ville, $options: 'i' },
+//       validated: true,
+//     }).select('nom prenom specialite ville localisation profileImage');
+
+//     console.log('SearchDoctorsByCity - Résultat:', doctors);
+
+//     if (doctors.length === 0) {
+//       return res.json({ message: `Aucun médecin trouvé à ${ville}`, doctors: [] });
+//     }
+
+//     res.json(doctors);
+//   } catch (error) {
+//     console.error('SearchDoctorsByCity - Erreur:', error);
+//     res.status(500).json({ message: 'Erreur serveur lors de la recherche' });
+//   }
+// });
+
+exports.searchDoctorsByCity = asyncHandler(async (req, res) => {
+  const { specialite, ville } = req.query;
+  console.log('searchDoctorsByCity - Requête reçue:', { specialite, ville });
+
+  if (!specialite) {
+    return res.status(400).json({ message: 'La spécialité est requise.' });
+  }
+
+  // Construire la requête MongoDB
+  const query = {
+    role: 'internaute',
+    specialite: { $regex: specialite, $options: 'i' }, // Recherche insensible à la casse
+    validated: true,
+  };
+
+  // Ajouter la ville au filtre si elle est fournie
+  if (ville) {
+    query.ville = { $regex: ville, $options: 'i' };
+  }
+
+  try {
+    const doctors = await User.find(query).select('nom prenom specialite ville localisation profileImage');
+    console.log('searchDoctorsByCity - Résultat:', doctors);
+
+    if (doctors.length === 0) {
+      return res.json({
+        message: `Aucun médecin trouvé pour la spécialité "${specialite}"${ville ? ` à ${ville}` : ''}.`,
+        doctors: [],
+      });
+    }
+
+    res.json(doctors);
+  } catch (error) {
+    console.error('searchDoctorsByCity - Erreur:', error);
+    res.status(500).json({ message: 'Erreur serveur lors de la recherche.' });
+  }
+});

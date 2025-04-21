@@ -33,3 +33,4 @@ module.exports = (req, res, next) => {
     return res.status(500).json({ error: "Erreur interne du serveur lors de la validation du token." });
   }
 };
+

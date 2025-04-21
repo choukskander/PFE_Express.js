@@ -2,21 +2,25 @@ const express = require("express");
 const mongoose = require("mongoose");
 const dotenv = require("dotenv");
 const cors = require("cors");
+const fileUpload = require('express-fileupload');
 const path = require("path");
 
 dotenv.config();
 
 const app = express();
 app.use(express.json());
+app.use(fileUpload({
+  useTempFiles: true, // Store files on disk
+  tempFileDir: path.join(__dirname, 'Uploads'), // Ensure folder exists
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
+  abortOnLimit: true
+}));
 app.use(cors());
-app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+app.use("/uploads", express.static(path.join(__dirname, "Uploads")));
 
 // Connexion à MongoDB
 mongoose
-  .connect(process.env.MONGODB_URI, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
-  })
+  .connect(process.env.MONGODB_URI)
   .then(() => console.log("🟢 Connexion à MongoDB réussie"))
   .catch((err) => console.error("🔴 Erreur de connexion à MongoDB :", err));
 
