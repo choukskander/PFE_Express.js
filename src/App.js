@@ -1,24 +1,59 @@
-import logo from './logo.svg';
-import './App.css';
+import React from "react";
+import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
+import { UserProvider, useUser } from "./context/UserContext";
+
+import Home from "./pages/Home";
+import Login from "./pages/Login";
+import Register from "./pages/Register";
+import Dashboard from "./pages/Dashboard";
+import PatientPage from "./pages/RegisterPatient";
+import InternautePage from "./pages/RegisterInternaute";
+import ProfileScreen from "./pages/ProfileScreen";
+import PatientDashboard from './pages/PatientDashboard';
+import DoctorDashboard from './pages/DoctorDashboard';
+import SearchDoctors from './pages/SearchDoctors';
+// Composant pour route protégée selon le rôle
+const RoleProtectedRoute = ({ children, allowedRoles }) => {
+  const { user } = useUser();
+
+  if (!user) return <Navigate to="/login" />;
+  if (allowedRoles.includes(user.role)) {
+    return children;
+  } else {
+    return <Navigate to="/" />;
+  }
+};
 
 function App() {
   return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.js</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
-    </div>
+    <UserProvider>
+      <Router>
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
+          <Route path="/ProfileScreen" element={<ProfileScreen />} />
+          {/* ✅ Pages de création de compte accessibles librement */}
+          <Route path="/registerpatient" element={<PatientPage />} />
+          <Route path="/registerinternaute" element={<InternautePage />} />
+          <Route path="/patient" element={<PatientDashboard />} />
+          <Route path="/search-doctors" element={<SearchDoctors />} />
+        <Route path="/doctor" element={<DoctorDashboard />} />
+          {/* ✅ Route protégée uniquement pour admin */}
+          <Route
+            path="/dashboard"
+            element={
+              <RoleProtectedRoute allowedRoles={["admin"]}>
+                <Dashboard />
+              </RoleProtectedRoute>
+            }
+          />
+
+          {/* ✅ 404 fallback */}
+          <Route path="*" element={<h1>404 - Page non trouvée</h1>} />
+        </Routes>
+      </Router>
+    </UserProvider>
   );
 }
 
