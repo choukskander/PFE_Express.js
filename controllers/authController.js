@@ -180,56 +180,53 @@ exports.updateUserProfile = asyncHandler(async (req, res) => {
   });
 });
 
-// exports.searchDoctorsByCity = asyncHandler(async (req, res) => {
-//   let { ville } = req.query;
-//   console.log('SearchDoctorsByCity - Ville reçue:', ville);
-
-//   if (!ville) {
-//     return res.status(400).json({ message: 'Ville est requise' });
-//   }
-
-//   // Nettoyer la valeur de ville
-//   ville = ville.trim();
-//   if (!ville) {
-//     return res.status(400).json({ message: 'Ville ne peut pas être vide après nettoyage' });
-//   }
-
-//   try {
-//     const doctors = await User.find({
-//       role: 'internaute',
-//       ville: { $regex: ville, $options: 'i' },
-//       validated: true,
-//     }).select('nom prenom specialite ville localisation profileImage');
-
-//     console.log('SearchDoctorsByCity - Résultat:', doctors);
-
-//     if (doctors.length === 0) {
-//       return res.json({ message: `Aucun médecin trouvé à ${ville}`, doctors: [] });
-//     }
-
-//     res.json(doctors);
-//   } catch (error) {
-//     console.error('SearchDoctorsByCity - Erreur:', error);
-//     res.status(500).json({ message: 'Erreur serveur lors de la recherche' });
-//   }
-// });
-
+// Récupérer les spécialités uniques
+exports.getSpecialites = asyncHandler(async (req, res) => {
+  try {
+    // Récupérer les spécialités uniques avec distinct
+    const specialites = await User.distinct('specialite');
+    // Ajouter une option par défaut
+    const specialitesList = [
+      { value: '', label: 'Sélectionner une spécialité' },
+      ...specialites
+        .filter(specialite => specialite) // Filtrer les valeurs nulles ou vides
+        .map(specialite => ({ value: specialite, label: specialite }))
+    ];
+    res.json(specialitesList);
+  } catch (err) {
+    console.error('Erreur lors de la récupération des spécialités:', err);
+    res.status(500).json({ message: 'Erreur serveur lors de la récupération des spécialités.' });
+  }
+});
 exports.searchDoctorsByCity = asyncHandler(async (req, res) => {
-  const { specialite, ville } = req.query;
-  console.log('searchDoctorsByCity - Requête reçue:', { specialite, ville });
+  const { nom, specialite, ville } = req.query;
+  console.log('searchDoctorsByCity - Requête reçue:', { nom, specialite, ville });
 
-  if (!specialite) {
-    return res.status(400).json({ message: 'La spécialité est requise.' });
+  // Vérifier qu'au moins un critère est fourni
+  if (!nom && !specialite && !ville) {
+    return res.status(400).json({ message: 'Au moins un critère de recherche (nom, spécialité ou ville) est requis.' });
   }
 
   // Construire la requête MongoDB
   const query = {
     role: 'internaute',
-    specialite: { $regex: specialite, $options: 'i' }, // Recherche insensible à la casse
     validated: true,
   };
 
-  // Ajouter la ville au filtre si elle est fournie
+  // Ajouter le filtre par nom si fourni
+  if (nom) {
+    query.$or = [
+      { nom: { $regex: nom, $options: 'i' } },
+      { prenom: { $regex: nom, $options: 'i' } },
+    ];
+  }
+
+  // Ajouter le filtre par spécialité si fourni
+  if (specialite) {
+    query.specialite = { $regex: specialite, $options: 'i' };
+  }
+
+  // Ajouter le filtre par ville si fourni
   if (ville) {
     query.ville = { $regex: ville, $options: 'i' };
   }
@@ -240,7 +237,7 @@ exports.searchDoctorsByCity = asyncHandler(async (req, res) => {
 
     if (doctors.length === 0) {
       return res.json({
-        message: `Aucun médecin trouvé pour la spécialité "${specialite}"${ville ? ` à ${ville}` : ''}.`,
+        message: `Aucun médecin trouvé pour les critères spécifiés.`,
         doctors: [],
       });
     }
