@@ -101,12 +101,12 @@ const Navbar = () => {
             </div>
 
             <nav className="hidden md:flex space-x-8">
-              <Link
-                to="/"
-                className="text-gray-700 hover:text-primary px-3 py-2 rounded-md text-sm font-medium"
-              >
-                Accueil
-              </Link>
+            <Link
+              to="/"
+             className="no-underline hover:no-underline focus:no-underline text-gray-700 hover:text-primary px-3 py-2 rounded-md text-sm font-medium"
+            >
+             Accueil
+            </Link>
 
               <div className="dropdown relative">
                 <button
@@ -119,21 +119,21 @@ const Navbar = () => {
                   <Link
                     to="/forum"
                     onClick={handleLinkClick}
-                    className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                    className="no-underline block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                   >
                     Forum Médical
                   </Link>
                   <Link
                     to="/dossiers"
                     onClick={handleLinkClick}
-                    className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                    className="no-underline block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                   >
                     Partage de Dossiers
                   </Link>
                   <Link
                     to="/recherche-ia"
                     onClick={handleLinkClick}
-                    className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                    className="no-underline block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                   >
                     Recherche IA
                   </Link>
@@ -143,7 +143,7 @@ const Navbar = () => {
               <div className="dropdown relative">
                 <button
                   onClick={togglePatientDropdown}
-                  className="text-gray-700 hover:text-primary px-3 py-2 rounded-md text-sm font-medium flex items-center"
+                  className="no-underline text-gray-700 hover:text-primary px-3 py-2 rounded-md text-sm font-medium flex items-center"
                 >
                   Espace Patient <i className="ri-arrow-down-s-line ml-1"></i>
                 </button>
@@ -151,21 +151,21 @@ const Navbar = () => {
                   <Link
                     to="/diagnostic-ia"
                     onClick={handleLinkClick}
-                    className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                    className="no-underline block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                   >
                     Diagnostic IA
                   </Link>
                   <Link
                     to="/historique"
                     onClick={handleLinkClick}
-                    className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                    className="no-underline block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                   >
                     Historique
                   </Link>
                   
 
 {user && user.role === 'patient' && (
-  <Link to="/search-doctors" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+  <Link to="/search-doctors" className="no-underline block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
     Rechercher des Médecins
   </Link>
 )}
@@ -186,7 +186,7 @@ const Navbar = () => {
                     <Link
                       to="/ProfileScreen"
                       onClick={handleLinkClick}
-                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      className="no-underline block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                     >
                       Profil
                     </Link>

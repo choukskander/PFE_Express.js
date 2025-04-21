@@ -1,25 +1,43 @@
 import React, { useEffect, useState } from 'react';
 import * as echarts from 'echarts';
+import axios from 'axios';
 import Navbar from './Navbar';
 import Footer from './Footer';
 import Swal from 'sweetalert2';
 import { useNavigate } from 'react-router-dom';
 
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+
 const Home = () => {
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
   const [specialite, setSpecialite] = useState('');
-
-  // Liste des spécialités prédéfinies
-  const specialites = [
+  const [nom, setNom] = useState('');
+  const [specialites, setSpecialites] = useState([
     { value: '', label: 'Sélectionner une spécialité' },
-    { value: 'Cardiologue', label: 'Cardiologue' },
-    { value: 'Dentiste', label: 'Dentiste' },
-    { value: 'Dermatologue', label: 'Dermatologue' },
-    { value: 'Généraliste', label: 'Généraliste' },
-    { value: 'Pédiatre', label: 'Pédiatre' },
-    // Ajoutez d'autres spécialités selon vos besoins
-  ];
+  ]);
+
+  // Charger les spécialités dynamiquement depuis le backend
+  useEffect(() => {
+    const fetchSpecialites = async () => {
+      try {
+        const response = await axios.get(`${API_URL}/api/auth/specialites`);
+        setSpecialites(response.data);
+      } catch (err) {
+        console.error('Erreur lors de la récupération des spécialités:', err);
+        Swal.fire({
+          icon: 'error',
+          title: 'Erreur',
+          text: 'Impossible de charger les spécialités. Veuillez réessayer plus tard.',
+          toast: true,
+          position: 'top-end',
+          timer: 3000,
+          timerProgressBar: true,
+        });
+      }
+    };
+    fetchSpecialites();
+  }, []);
 
   useEffect(() => {
     const consultationsChart = echarts.init(document.getElementById('consultationsChart'));
@@ -43,10 +61,18 @@ const Home = () => {
 
   const validateQuery = () => {
     const cleanedQuery = searchQuery.trim();
+    const cleanedNom = nom.trim();
     const nameRegex = /^[a-zA-Z\s-]{2,50}$/i;
 
-    if (!specialite) return 'La spécialité est requise.';
-    if (cleanedQuery && !nameRegex.test(cleanedQuery)) return 'Ville doit contenir 2-50 lettres, espaces ou tirets.';
+    if (!nom && !specialite && !searchQuery) {
+      return 'Veuillez spécifier au moins un critère (nom, spécialité ou ville).';
+    }
+    if (cleanedNom && !nameRegex.test(cleanedNom)) {
+      return 'Le nom doit contenir 2-50 lettres, espaces ou tirets.';
+    }
+    if (cleanedQuery && !nameRegex.test(cleanedQuery)) {
+      return 'La ville doit contenir 2-50 lettres, espaces ou tirets.';
+    }
     return null;
   };
 
@@ -76,7 +102,7 @@ const Home = () => {
     // Valider la requête de recherche
     const error = validateQuery();
     if (error) {
-      console.log('Home - Erreur de validation:', error, 'specialite:', specialite, 'searchQuery:', searchQuery);
+      console.log('Home - Erreur de validation:', error, { nom, specialite, ville: searchQuery });
       Swal.fire({
         icon: 'error',
         title: 'Erreur',
@@ -90,10 +116,13 @@ const Home = () => {
     }
 
     const cleanedQuery = searchQuery.trim();
-    console.log('Home - Redirection avec:', { specialite, ville: cleanedQuery });
+    const cleanedNom = nom.trim();
+    console.log('Home - Redirection avec:', { nom: cleanedNom, specialite, ville: cleanedQuery });
 
-    // Rediriger avec spécialité et ville (si fournie)
-    const queryParams = new URLSearchParams({ specialite });
+    // Construire les paramètres de l'URL
+    const queryParams = new URLSearchParams();
+    if (cleanedNom) queryParams.append('nom', cleanedNom);
+    if (specialite) queryParams.append('specialite', specialite);
     if (cleanedQuery) queryParams.append('ville', cleanedQuery);
     navigate(`/search-doctors?${queryParams.toString()}`);
   };
@@ -113,7 +142,7 @@ const Home = () => {
           </div>
 
           <div className="container mx-auto px-4 py-16 md:py-24 relative z-10">
-            <div className="max-w-xl">
+            <div className="max-w-4xl mx-auto">
               <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold text-gray-900 mb-4">
                 Votre santé, notre priorité
               </h1>
@@ -122,43 +151,65 @@ const Home = () => {
                 personnalisé.
               </p>
 
-              <div className="bg-white p-4 rounded-lg shadow-lg">
-                <form onSubmit={handleSearch} className="space-y-4">
-                  <div>
-                    <label htmlFor="specialite" className="block text-sm font-semibold text-gray-800">
+              <div className="bg-white p-6 rounded-xl shadow-lg">
+                <form onSubmit={handleSearch} className="flex flex-col md:flex-row gap-4 items-center">
+                  <div className="flex-1">
+                    <label htmlFor="nom" className="block text-sm font-semibold text-gray-800 mb-1">
+                      Nom du médecin
+                    </label>
+                    <div className="relative">
+                      <input
+                        id="nom"
+                        type="text"
+                        placeholder="   Entrez le nom "
+                        value={nom}
+                        onChange={(e) => setNom(e.target.value)}
+                        className="w-full p-3 pl-16 rounded-lg border border-gray-300 focus:ring-blue-500 focus:border-blue-500 placeholder-gray-500"
+                      />
+                      <i className="fas fa-user-md absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-300"></i>
+                    </div>
+                  </div>
+                  <div className="flex-1">
+                    <label htmlFor="specialite" className="block text-sm font-semibold text-gray-800 mb-1">
                       Spécialité
                     </label>
-                    <select
-                      id="specialite"
-                      value={specialite}
-                      onChange={(e) => setSpecialite(e.target.value)}
-                      className="mt-1 block w-full p-3 rounded-lg border border-gray-300 focus:ring-blue-500 focus:border-blue-500"
-                    >
-                      {specialites.map((spec) => (
-                        <option key={spec.value} value={spec.value}>
-                          {spec.label}
-                        </option>
-                      ))}
-                    </select>
+                    <div className="relative">
+                      <select
+                        id="specialite"
+                        value={specialite}
+                        onChange={(e) => setSpecialite(e.target.value)}
+                        className="w-full p-3 pl-16 rounded-lg border border-gray-300 focus:ring-blue-500 focus:border-blue-500 appearance-none text-gray-500"
+                      >
+                        {specialites.map((spec) => (
+                          <option key={spec.value} value={spec.value}>
+                            {spec.label}
+                          </option>
+                        ))}
+                      </select>
+                      
+                    </div>
                   </div>
-                  <div className="relative">
-                    <label htmlFor="ville" className="block text-sm font-semibold text-gray-800">
-                      Ville (facultatif)
+                  <div className="flex-1">
+                    <label htmlFor="ville" className="block text-sm font-semibold text-gray-800 mb-1">
+                      Ville
                     </label>
-                    <input
-                      id="ville"
-                      type="text"
-                      placeholder="Entrez la ville (ex. Tunis)"
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      className="mt-1 block w-full pl-10 pr-4 py-3 rounded-lg border border-gray-300 focus:ring-blue-500 focus:border-blue-500"
-                    />
-                    <i className="fas fa-search absolute left-3 top-1/2 transform translate-y-2 text-gray-400"></i>
+                    <div className="relative">
+                      <input
+                        id="ville"
+                        type="text"
+                        placeholder="   Entrez la ville"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="w-full p-3 pl-16 rounded-lg border border-gray-300 focus:ring-blue-500 focus:border-blue-500 placeholder-gray-500"
+                      />
+                      <i className="fas fa-map-marker-alt absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-300"></i>
+                    </div>
                   </div>
                   <button
                     type="submit"
-                    className="w-full bg-blue-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-blue-700"
+                    className="mt-4 md:mt-0 bg-blue-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-blue-700 transition-colors"
                   >
+                    <i className="fas fa-search mr-2"></i>
                     Rechercher
                   </button>
                 </form>

@@ -10,64 +10,78 @@ const SearchDoctors = () => {
   const location = useLocation();
   const [ville, setVille] = useState('');
   const [specialite, setSpecialite] = useState('');
+  const [nom, setNom] = useState('');
   const [doctors, setDoctors] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [formErrors, setFormErrors] = useState({});
-
-  // Liste des spécialités prédéfinies
-  const specialites = [
+  const [specialites, setSpecialites] = useState([
     { value: '', label: 'Sélectionner une spécialité' },
-    { value: 'Cardiologue', label: 'Cardiologue' },
-    { value: 'Dentiste', label: 'Dentiste' },
-    { value: 'Dermatologue', label: 'Dermatologue' },
-    { value: 'Généraliste', label: 'Généraliste' },
-    { value: 'Pédiatre', label: 'Pédiatre' },
-    // Ajoutez d'autres spécialités selon vos besoins
-  ];
+  ]);
 
-  // Extraire spécialité et ville depuis l'URL
+  // Charger les spécialités dynamiquement depuis le backend
+  useEffect(() => {
+    const fetchSpecialites = async () => {
+      try {
+        const response = await axios.get(`${API_URL}/api/auth/specialites`);
+        setSpecialites(response.data);
+      } catch (err) {
+        console.error('Erreur lors de la récupération des spécialités:', err);
+        Swal.fire({
+          icon: 'error',
+          title: 'Erreur',
+          text: 'Impossible de charger les spécialités. Veuillez réessayer plus tard.',
+          toast: true,
+          position: 'top-end',
+          timer: 3000,
+          timerProgressBar: true,
+        });
+      }
+    };
+    fetchSpecialites();
+  }, []);
+
+  // Extraire nom, spécialité et ville depuis l'URL
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const villeFromUrl = params.get('ville');
     const specialiteFromUrl = params.get('specialite');
-    console.log('SearchDoctors - URL params:', { specialiteFromUrl, villeFromUrl });
+    const nomFromUrl = params.get('nom');
+    console.log('SearchDoctors - URL params:', { nomFromUrl, specialiteFromUrl, villeFromUrl });
 
-    if (specialiteFromUrl) {
-      setSpecialite(decodeURIComponent(specialiteFromUrl));
-    }
-    if (villeFromUrl) {
-      setVille(decodeURIComponent(villeFromUrl));
-    }
+    if (nomFromUrl) setNom(decodeURIComponent(nomFromUrl));
+    if (specialiteFromUrl) setSpecialite(decodeURIComponent(specialiteFromUrl));
+    if (villeFromUrl) setVille(decodeURIComponent(villeFromUrl));
   }, [location.search]);
 
-  // Déclencher la recherche automatique lorsque spécialité ou ville change
+  // Déclencher la recherche automatique si au moins un critère est présent
   useEffect(() => {
-    if (specialite) {
-      console.log('SearchDoctors - Déclenchement recherche automatique:', { specialite, ville });
+    if (nom || specialite || ville) {
+      console.log('SearchDoctors - Déclenchement recherche automatique:', { nom, specialite, ville });
       handleSearch({ preventDefault: () => {} }, true);
     }
-  }, [specialite, ville]);
+// eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [nom, specialite, ville]);
 
   const validateForm = (isAutoSearch = false) => {
     let errors = {};
     const cleanedVille = ville.trim();
     const cleanedSpecialite = specialite.trim();
+    const cleanedNom = nom.trim();
 
-    console.log('SearchDoctors - Validation:', { specialite: cleanedSpecialite, ville: cleanedVille });
+    console.log('SearchDoctors - Validation:', { nom: cleanedNom, specialite: cleanedSpecialite, ville: cleanedVille });
 
-    if (!cleanedSpecialite) {
-      errors.specialite = 'La spécialité est requise.';
-    } else if (!isAutoSearch) {
+    if (!cleanedNom && !cleanedSpecialite && !cleanedVille) {
+      errors.general = 'Veuillez spécifier au moins un critère (nom, spécialité ou ville).';
+    } else {
       const nameRegex = /^[a-zA-Z\s-]{2,50}$/i;
-      if (!nameRegex.test(cleanedSpecialite)) {
-        errors.specialite = 'Spécialité doit contenir 2-50 lettres, espaces ou tirets.';
+      if (cleanedNom && !isAutoSearch && !nameRegex.test(cleanedNom)) {
+        errors.nom = 'Le nom doit contenir 2-50 lettres, espaces ou tirets.';
       }
-    }
-
-    if (cleanedVille && !isAutoSearch) {
-      const nameRegex = /^[a-zA-Z\s-]{2,50}$/i;
-      if (!nameRegex.test(cleanedVille)) {
-        errors.ville = 'Ville doit contenir 2-50 lettres, espaces ou tirets.';
+      if (cleanedSpecialite && !isAutoSearch && !nameRegex.test(cleanedSpecialite)) {
+        errors.specialite = 'La spécialité doit contenir 2-50 lettres, espaces ou tirets.';
+      }
+      if (cleanedVille && !isAutoSearch && !nameRegex.test(cleanedVille)) {
+        errors.ville = 'La ville doit contenir 2-50 lettres, espaces ou tirets.';
       }
     }
 
@@ -79,7 +93,8 @@ const SearchDoctors = () => {
     e.preventDefault();
     const cleanedVille = ville.trim();
     const cleanedSpecialite = specialite.trim();
-    console.log('SearchDoctors - Recherche avec:', { specialite: cleanedSpecialite, ville: cleanedVille });
+    const cleanedNom = nom.trim();
+    console.log('SearchDoctors - Recherche avec:', { nom: cleanedNom, specialite: cleanedSpecialite, ville: cleanedVille });
 
     if (!validateForm(isAutoSearch)) {
       console.log('SearchDoctors - Erreurs de validation:', formErrors);
@@ -87,7 +102,7 @@ const SearchDoctors = () => {
         Swal.fire({
           icon: 'error',
           title: 'Erreur',
-          text: Object.values(formErrors)[0],
+          text: formErrors.general || Object.values(formErrors)[0],
           toast: true,
           position: 'top-end',
           timer: 3000,
@@ -99,7 +114,9 @@ const SearchDoctors = () => {
 
     setIsLoading(true);
     try {
-      const params = { specialite: cleanedSpecialite };
+      const params = {};
+      if (cleanedNom) params.nom = cleanedNom;
+      if (cleanedSpecialite) params.specialite = cleanedSpecialite;
       if (cleanedVille) params.ville = cleanedVille;
 
       const response = await axios.get(`${API_URL}/api/auth/search-doctors`, { params });
@@ -109,9 +126,7 @@ const SearchDoctors = () => {
         Swal.fire({
           icon: 'info',
           title: 'Aucun résultat',
-          text: `Aucun médecin trouvé pour la spécialité "${cleanedSpecialite}"${
-            cleanedVille ? ` à ${cleanedVille}` : ''
-          }.`,
+          text: `Aucun médecin trouvé pour les critères spécifiés.`,
           toast: true,
           position: 'top-end',
           timer: 3000,
@@ -153,68 +168,93 @@ const SearchDoctors = () => {
 
           <div className="container mx-auto px-4 py-16 md:py-24 relative z-10">
             <h2 className="text-3xl font-bold text-blue-600 text-center mb-6">Rechercher des Médecins</h2>
-            <form onSubmit={(e) => handleSearch(e, false)} className="max-w-lg mx-auto mb-8 space-y-4">
-              <div>
-                <label htmlFor="specialite" className="block text-sm font-semibold text-gray-800">
-                  Spécialité
-                </label>
-                <select
-                  id="specialite"
-                  value={specialite}
-                  onChange={(e) => setSpecialite(e.target.value)}
-                  className="mt-1 block w-full p-3 rounded-lg border border-gray-300 focus:ring-blue-500 focus:border-blue-500"
-                  aria-describedby={formErrors.specialite ? 'specialite-error' : undefined}
+            <div className="bg-white p-6 rounded-xl shadow-lg max-w-4xl mx-auto">
+              <form onSubmit={(e) => handleSearch(e, false)} className="flex flex-col md:flex-row gap-4 items-center">
+                <div className="flex-1">
+                  <label htmlFor="nom" className="block text-sm font-semibold text-gray-800 mb-1">
+                    Nom du médecin
+                  </label>
+                  <div className="relative">
+                    <input
+                      id="nom"
+                      type="text"
+                      placeholder="   Entrez le nom"
+                      value={nom}
+                      onChange={(e) => setNom(e.target.value)}
+                      className="w-full p-3 pl-16 rounded-lg border border-gray-300 focus:ring-blue-500 focus:border-blue-500 placeholder-gray-500"
+                      aria-describedby={formErrors.nom ? 'nom-error' : undefined}
+                    />
+                    <i className="fas fa-user-md absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-300"></i>
+                  </div>
+                  {formErrors.nom && (
+                    <p id="nom-error" className="text-red-500 text-sm mt-1">{formErrors.nom}</p>
+                  )}
+                </div>
+                <div className="flex-1">
+                  <label htmlFor="specialite" className="block text-sm font-semibold text-gray-800 mb-1">
+                    Spécialité
+                  </label>
+                  <div className="relative">
+                    <select
+                      id="specialite"
+                      value={specialite}
+                      onChange={(e) => setSpecialite(e.target.value)}
+                      className="w-full p-3 pl-16 rounded-lg border border-gray-300 focus:ring-blue-500 focus:border-blue-500 appearance-none text-gray-500"
+                      aria-describedby={formErrors.specialite ? 'specialite-error' : undefined}
+                    >
+                      {specialites.map((spec) => (
+                        <option key={spec.value} value={spec.value}>
+                          {spec.label}
+                        </option>
+                      ))}
+                    </select>
+                    
+                  </div>
+                  {formErrors.specialite && (
+                    <p id="specialite-error" className="text-red-500 text-sm mt-1">{formErrors.specialite}</p>
+                  )}
+                </div>
+                <div className="flex-1">
+                  <label htmlFor="ville" className="block text-sm font-semibold text-gray-800 mb-1">
+                    Ville
+                  </label>
+                  <div className="relative">
+                    <input
+                      id="ville"
+                      type="text"
+                      placeholder="  Entrez la ville"
+                      value={ville}
+                      onChange={(e) => setVille(e.target.value)}
+                      className="w-full p-3 pl-16 rounded-lg border border-gray-300 focus:ring-blue-500 focus:border-blue-500 placeholder-gray-500"
+                      aria-describedby={formErrors.ville ? 'ville-error' : undefined}
+                    />
+                    <i className="fas fa-map-marker-alt absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-300"></i>
+                  </div>
+                  {formErrors.ville && (
+                    <p id="ville-error" className="text-red-500 text-sm mt-1">{formErrors.ville}</p>
+                  )}
+                </div>
+                <button
+                  type="submit"
+                  className="mt-4 md:mt-0 bg-blue-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-blue-700 transition-colors disabled:bg-blue-400"
+                  disabled={isLoading}
                 >
-                  {specialites.map((spec) => (
-                    <option key={spec.value} value={spec.value}>
-                      {spec.label}
-                    </option>
-                  ))}
-                </select>
-                {formErrors.specialite && (
-                  <p id="specialite-error" className="text-red-500 text-sm mt-1">
-                    {formErrors.specialite}
-                  </p>
-                )}
-              </div>
-              <div>
-                <label htmlFor="ville" className="block text-sm font-semibold text-gray-800">
-                  Ville (facultatif)
-                </label>
-                <input
-                  id="ville"
-                  type="text"
-                  placeholder="Entrez la ville (ex. Tunis)"
-                  value={ville}
-                  onChange={(e) => setVille(e.target.value)}
-                  className="mt-1 block w-full p-3 rounded-lg border border-gray-300 focus:ring-blue-500 focus:border-blue-500"
-                  aria-describedby={formErrors.ville ? 'ville-error' : undefined}
-                />
-                {formErrors.ville && (
-                  <p id="ville-error" className="text-red-500 text-sm mt-1">
-                    {formErrors.ville}
-                  </p>
-                )}
-              </div>
-              <button
-                type="submit"
-                className="w-full bg-blue-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-blue-700 disabled:bg-blue-400"
-                disabled={isLoading}
-              >
-                {isLoading ? 'Recherche...' : 'Rechercher'}
-              </button>
-            </form>
-            <div className="max-w-5xl mx-auto">
+                  <i className="fas fa-search mr-2"></i>
+                  {isLoading ? 'Recherche...' : 'Rechercher'}
+                </button>
+              </form>
+            </div>
+            <div className="max-w-5xl mx-auto mt-8">
               {doctors.length > 0 && (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                   {doctors.map((doctor) => (
                     <div key={doctor._id} className="bg-white p-6 rounded-lg shadow-lg">
-                      <img
-                        src={doctor.profileImage || '/placeholder-profile-image.jpg'}
-                        alt={`Photo de profil de ${doctor.prenom} ${doctor.nom}`}
-                        className="w-24 h-24 rounded-full mx-auto mb-4 object-cover"
-                        loading="lazy"
-                      />
+                           <img
+            src={doctor.profileImage || '/placeholder-profile-image.jpg'}
+            alt={`Profil du Dr. ${doctor.prenom} ${doctor.nom}`}
+            className="w-24 h-24 rounded-full mx-auto mb-4 object-cover"
+            loading="lazy"
+          />
                       <h3 className="text-xl font-semibold text-gray-800 text-center">
                         Dr. {doctor.prenom} {doctor.nom}
                       </h3>
