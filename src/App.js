@@ -12,6 +12,11 @@ import ProfileScreen from "./pages/ProfileScreen";
 import PatientDashboard from './pages/PatientDashboard';
 import DoctorDashboard from './pages/DoctorDashboard';
 import SearchDoctors from './pages/SearchDoctors';
+import DoctorSchedule from './pages/DoctorSchedule';
+import DoctorList from './pages/DoctorList';
+import DoctorSchedulePatient from './pages/DoctorSchedulePatient';
+import DoctorAppointments from './pages/DoctorAppointments';
+import PatientAppointments from './pages/PatientAppointments';
 // Composant pour route protégée selon le rôle
 const RoleProtectedRoute = ({ children, allowedRoles }) => {
   const { user } = useUser();
@@ -38,6 +43,11 @@ function App() {
           <Route path="/registerinternaute" element={<InternautePage />} />
           <Route path="/patient" element={<PatientDashboard />} />
           <Route path="/search-doctors" element={<SearchDoctors />} />
+          <Route path="/doctor-schedule" element={<DoctorSchedule />} />
+          <Route path="/doctors" element={<DoctorList />} />
+        <Route path="/doctor-schedule/:doctorId" element={<DoctorSchedulePatient />} />
+        <Route path="/my-appointments/doctor" element={<DoctorAppointments />} />
+        <Route path="/my-appointments/patient" element={<PatientAppointments />} />
         <Route path="/doctor" element={<DoctorDashboard />} />
           {/* ✅ Route protégée uniquement pour admin */}
           <Route

@@ -130,13 +130,12 @@ const Navbar = () => {
                   >
                     Partage de Dossiers
                   </Link>
-                  <Link
-                    to="/recherche-ia"
-                    onClick={handleLinkClick}
-                    className="no-underline block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                  >
-                    Recherche IA
-                  </Link>
+                  {user && user.role === 'internaute' && (
+            <Link to="/my-appointments/doctor" className="no-underline block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Mes Rendez-vous</Link>
+          )}
+                  {user && user.role === 'internaute' && (
+            <Link to="/doctor-schedule" className="no-underline block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Gérer mes horaires</Link>
+          )}
                 </div>
               </div>
 
@@ -162,7 +161,11 @@ const Navbar = () => {
                   >
                     Historique
                   </Link>
-                  
+                  {user && user.role === 'patient' && (
+  <Link to="/my-appointments/patient" className="no-underline block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+    Mes Rendez-vous
+  </Link>
+)}
 
 {user && user.role === 'patient' && (
   <Link to="/search-doctors" className="no-underline block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
@@ -205,13 +208,13 @@ const Navbar = () => {
                 <>
                   <Link
                     to="/login"
-                    className="bg-white text-primary border border-primary px-4 py-2 rounded-button text-sm font-medium hover:bg-primary hover:text-white transition-colors whitespace-nowrap"
+                    className="no-underline bg-white text-primary border border-primary px-4 py-2 rounded-button text-sm font-medium hover:bg-primary hover:text-white transition-colors whitespace-nowrap"
                   >
                     Se connecter
                   </Link>
                   <Link
                     to="/register"
-                    className="bg-primary text-white px-4 py-2 rounded-button text-sm font-medium hover:bg-blue-600 transition-colors whitespace-nowrap"
+                    className="no-underline bg-primary text-white px-4 py-2 rounded-button text-sm font-medium hover:bg-blue-600 transition-colors whitespace-nowrap"
                   >
                     S'inscrire
                   </Link>

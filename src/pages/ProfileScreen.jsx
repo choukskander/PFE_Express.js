@@ -322,8 +322,8 @@ const ProfileScreen = () => {
   const [prenom, setPrenom] = useState('');
   const [email, setEmail] = useState('');
   const [specialite, setSpecialite] = useState('');
-  const [ville, setVille] = useState(''); // Nouveau champ
-  const [localisation, setLocalisation] = useState(''); // Nouveau champ
+  const [ville, setVille] = useState(''); 
+  const [localisation, setLocalisation] = useState(''); 
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [profileImage, setProfileImage] = useState(null);
@@ -340,8 +340,8 @@ const ProfileScreen = () => {
       setPrenom(parsedUser.prenom || '');
       setEmail(parsedUser.email || '');
       setSpecialite(parsedUser.specialite || '');
-      setVille(parsedUser.ville || ''); // Initialisation du champ ville
-      setLocalisation(parsedUser.localisation || ''); // Initialisation du champ localisation
+      setVille(parsedUser.ville || ''); 
+      setLocalisation(parsedUser.localisation || ''); 
       setPreviewImage(parsedUser.profileImage || '/placeholder-profile-image.jpg');
     }
   }, [navigate]);
@@ -376,8 +376,8 @@ const ProfileScreen = () => {
       formData.append('email', email || '');
       if (user.role === 'internaute') {
         formData.append('specialite', specialite || '');
-        formData.append('ville', ville || ''); // Ajout du champ ville
-        formData.append('localisation', localisation || ''); // Ajout du champ localisation
+        formData.append('ville', ville || ''); 
+        formData.append('localisation', localisation || ''); 
       }
       if (password) {
         formData.append('password', password);
@@ -410,8 +410,8 @@ const ProfileScreen = () => {
         prenom: data.prenom,
         email: data.email,
         specialite: data.specialite,
-        ville: data.ville, // Mise à jour du champ ville
-        localisation: data.localisation, // Mise à jour du champ localisation
+        ville: data.ville, 
+        localisation: data.localisation, 
         profileImage: data.profileImage,
       }));
       setUser({
@@ -420,8 +420,8 @@ const ProfileScreen = () => {
         prenom: data.prenom,
         email: data.email,
         specialite: data.specialite,
-        ville: data.ville, // Mise à jour du champ ville
-        localisation: data.localisation, // Mise à jour du champ localisation
+        ville: data.ville, 
+        localisation: data.localisation, 
         profileImage: data.profileImage,
       });
       setPreviewImage(data.profileImage || '/placeholder-profile-image.jpg');

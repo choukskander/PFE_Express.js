@@ -147,8 +147,8 @@ const Home = () => {
                 Votre santé, notre priorité
               </h1>
               <p className="text-lg text-gray-700 mb-8">
-                Prenez rendez-vous avec les meilleurs médecins en Tunisie en quelques clics. Service rapide, sécurisé et
-                personnalisé.
+                Prenez rendez-vous avec les meilleurs médecins en Tunisie en quelques clics. 
+                Service rapide, sécurisé et personnalisé.
               </p>
 
               <div className="bg-white p-6 rounded-xl shadow-lg">
