@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const User = require("../models/User");
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
@@ -82,7 +83,7 @@ exports.register = asyncHandler(async (req, res) => {
       nom: newUser.nom,
       prenom: newUser.prenom,
       email: newUser.email,
-      role: NewUser.role,
+      role: newUser.role,
       specialite: newUser.specialite,
       licenceProfessionnelle: newUser.licenceProfessionnelle,
     },
@@ -247,4 +248,170 @@ exports.searchDoctorsByCity = asyncHandler(async (req, res) => {
     console.error('searchDoctorsByCity - Erreur:', error);
     res.status(500).json({ message: 'Erreur serveur lors de la recherche.' });
   }
+});
+// Mettre à jour les horaires du médecin
+exports.updateDoctorSchedule = asyncHandler(async (req, res) => {
+  if (!req.user || !req.user.id) {
+    return res.status(401).json({ message: 'Utilisateur non authentifié.' });
+  }
+
+  const user = await User.findById(req.user.id);
+  if (!user) {
+    return res.status(404).json({ message: 'Utilisateur non trouvé.' });
+  }
+  if (user.role !== 'internaute') {
+    return res.status(403).json({ message: 'Seuls les médecins peuvent mettre à jour leurs horaires.' });
+  }
+
+  const { horaires } = req.body;
+  if (!horaires || typeof horaires !== 'object') {
+    return res.status(400).json({ message: 'Les horaires doivent être fournis sous forme d\'objet.' });
+  }
+
+  // Valider les horaires
+  const days = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche'];
+  for (const day of days) {
+    if (horaires[day]) {
+      const { ouverture, fermeture, ferme } = horaires[day];
+      if (ferme === true) {
+        horaires[day] = { ouverture: '', fermeture: '', ferme: true };
+      } else {
+        if (!ouverture || !fermeture || !/^\d{2}:\d{2}$/.test(ouverture) || !/^\d{2}:\d{2}$/.test(fermeture)) {
+          return res.status(400).json({ message: `Format invalide pour les horaires du ${day}. Utilisez HH:MM.` });
+        }
+        horaires[day].ferme = false;
+      }
+    }
+  }
+
+  user.horaires = horaires;
+  await user.save();
+
+  res.json({ message: 'Horaires mis à jour avec succès.', horaires: user.horaires });
+});
+
+// Récupérer les horaires d'un médecin spécifique
+
+exports.getDoctorSchedule = asyncHandler(async (req, res) => {
+  const { doctorId } = req.params;
+  console.log('Received request for doctorId:', doctorId);
+
+  // Check if doctorId is a valid ObjectId
+  if (!mongoose.Types.ObjectId.isValid(doctorId)) {
+    console.log('Invalid doctorId format:', doctorId);
+    return res.status(400).json({ message: 'ID de médecin invalide.' });
+  }
+
+  // Include 'role' in the select fields
+  console.log('Querying database for user with ID:', doctorId);
+  const doctor = await User.findById(doctorId).select('horaires nom prenom specialite role'); // Added 'role'
+  if (!doctor) {
+    console.log('Doctor not found for ID:', doctorId);
+    return res.status(404).json({ message: 'Médecin non trouvé.' });
+  }
+
+  console.log('Doctor found:', doctor);
+  if (doctor.role !== 'internaute') {
+    console.log('User is not a doctor. Role:', doctor.role);
+    return res.status(404).json({ message: 'Médecin non trouvé.' });
+  }
+
+  console.log('Returning schedule for doctor:', doctorId);
+  res.json({ horaires: doctor.horaires, doctor: { nom: doctor.nom, prenom: doctor.prenom, specialite: doctor.specialite } });
+});
+
+// Récupérer les horaires d'un médecin pour les patients
+exports.getDoctorScheduleForPatient = asyncHandler(async (req, res) => {
+  const { doctorId } = req.params;
+  console.log('Patient requesting schedule for doctorId:', doctorId);
+  console.log('Utilisateur authentifié dans getDoctorScheduleForPatient:', req.user); // Ajouter ce log
+
+  if (!mongoose.Types.ObjectId.isValid(doctorId)) {
+    console.log('Invalid doctorId format:', doctorId);
+    return res.status(400).json({ message: 'ID de médecin invalide.' });
+  }
+
+  // Vérifier que l'utilisateur authentifié est un patient
+  console.log('Rôle de l\'utilisateur:', req.user.role); // Ajouter ce log
+  if (req.user.role !== 'patient') {
+    console.log('Access denied. User role:', req.user.role);
+    return res.status(403).json({ message: 'Accès refusé. Seuls les patients peuvent consulter les horaires.' });
+  }
+
+  console.log('Querying database for user with ID:', doctorId);
+  const doctor = await User.findById(doctorId).select('horaires nom prenom specialite role');
+  if (!doctor) {
+    console.log('Doctor not found for ID:', doctorId);
+    return res.status(404).json({ message: 'Médecin non trouvé.' });
+  }
+
+  console.log('Doctor found:', doctor);
+  if (doctor.role !== 'internaute') {
+    console.log('User is not a doctor. Role:', doctor.role);
+    return res.status(404).json({ message: 'Médecin non trouvé.' });
+  }
+
+  console.log('Returning schedule for doctor:', doctorId);
+  res.json({ horaires: doctor.horaires, doctor: { nom: doctor.nom, prenom: doctor.prenom, specialite: doctor.specialite } });
+});
+
+// Prendre un rendez-vous
+exports.bookAppointment = asyncHandler(async (req, res) => {
+  const { doctorId, date } = req.body;
+  const patientId = req.user.id;
+
+  const doctor = await User.findById(doctorId);
+  if (!doctor || doctor.role !== 'internaute') {
+    return res.status(404).json({ message: 'Médecin non trouvé.' });
+  }
+
+  const patient = await User.findById(patientId);
+  if (!patient || patient.role !== 'patient') {
+    return res.status(403).json({ message: 'Seuls les patients peuvent prendre des rendez-vous.' });
+  }
+
+  // Vérifier si le créneau est disponible
+  const appointmentDate = new Date(date);
+  const dayName = appointmentDate.toLocaleString('fr-FR', { weekday: 'long' }).toLowerCase();
+  const horaires = doctor.horaires.get(dayName);
+
+  if (horaires.ferme) {
+    return res.status(400).json({ message: `Le médecin est fermé le ${dayName}.` });
+  }
+
+  const [openHour, openMinute] = horaires.ouverture.split(':').map(Number);
+  const [closeHour, closeMinute] = horaires.fermeture.split(':').map(Number);
+  const appointmentHour = appointmentDate.getHours();
+  const appointmentMinute = appointmentDate.getMinutes();
+
+  const openTime = openHour * 60 + openMinute;
+  const closeTime = closeHour * 60 + closeMinute;
+  const appointmentTime = appointmentHour * 60 + appointmentMinute;
+
+  if (appointmentTime < openTime || appointmentTime >= closeTime) {
+    return res.status(400).json({ message: 'Le créneau horaire est en dehors des heures d\'ouverture.' });
+  }
+
+  // Vérifier si un rendez-vous existe déjà à ce créneau (par exemple, intervalle de 30 minutes)
+  const existingAppointment = await Appointment.findOne({
+    doctorId,
+    date: {
+      $gte: new Date(appointmentDate.getTime() - 15 * 60 * 1000), // 15 minutes avant
+      $lte: new Date(appointmentDate.getTime() + 15 * 60 * 1000), // 15 minutes après
+    },
+  });
+
+  if (existingAppointment) {
+    return res.status(400).json({ message: 'Ce créneau est déjà pris.' });
+  }
+
+  const newAppointment = new Appointment({
+    doctorId,
+    patientId,
+    date: appointmentDate,
+  });
+
+  await newAppointment.save();
+
+  res.status(201).json({ message: 'Rendez-vous pris avec succès.', appointment: newAppointment });
 });
