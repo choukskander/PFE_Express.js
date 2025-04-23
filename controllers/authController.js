@@ -5,6 +5,15 @@ const bcrypt = require("bcryptjs");
 const cloudinary = require('cloudinary').v2;
 const asyncHandler = require('express-async-handler');
 
+const path = require('path');
+const fs = require('fs');
+
+// Créer le dossier uploads s'il n'existe pas
+const uploadDir = path.join(__dirname, '../uploads');
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true });
+}
+
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
   api_key: process.env.CLOUDINARY_API_KEY,
@@ -14,6 +23,7 @@ cloudinary.config({
 const generateToken = (id) => {
   return jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: "1h" });
 };
+
 
 exports.register = asyncHandler(async (req, res) => {
   console.log("Register - Request body:", req.body, "Files:", req.files);
@@ -36,8 +46,8 @@ exports.register = asyncHandler(async (req, res) => {
     return res.status(400).json({ message: "Un utilisateur avec cet email existe déjà." });
   }
 
-  // Validate licenceProfessionnelle
-  let licenceUrl;
+  // Validate and save licenceProfessionnelle to uploads
+  let licencePath;
   if (licenceProfessionnelle) {
     const allowedTypes = ['image/jpeg', 'image/png', 'application/pdf'];
     if (!allowedTypes.includes(licenceProfessionnelle.mimetype)) {
@@ -48,14 +58,16 @@ exports.register = asyncHandler(async (req, res) => {
     }
 
     try {
-      const result = await cloudinary.uploader.upload(licenceProfessionnelle.tempFilePath, {
-        folder: 'licences',
-        resource_type: 'auto',
-      });
-      licenceUrl = result.secure_url;
+      const timestamp = Date.now();
+      const fileName = `${timestamp}-${licenceProfessionnelle.name}`;
+      const filePath = path.join(uploadDir, fileName);
+
+      // Déplacer le fichier vers le dossier uploads
+      await licenceProfessionnelle.mv(filePath);
+      licencePath = `/uploads/${fileName}`; // Chemin relatif stocké dans la base de données
     } catch (error) {
-      console.error('Cloudinary upload error (licence):', error);
-      return res.status(500).json({ message: "Erreur lors du téléchargement de la licence." });
+      console.error('Error saving licence to uploads:', error);
+      return res.status(500).json({ message: "Erreur lors de l'enregistrement de la licence." });
     }
   }
 
@@ -68,7 +80,7 @@ exports.register = asyncHandler(async (req, res) => {
     password: hashedPassword,
     role,
     specialite: role === "internaute" ? specialite : undefined,
-    licenceProfessionnelle: licenceUrl,
+    licenceProfessionnelle: licencePath,
   });
 
   await newUser.save();
@@ -414,4 +426,88 @@ exports.bookAppointment = asyncHandler(async (req, res) => {
   await newAppointment.save();
 
   res.status(201).json({ message: 'Rendez-vous pris avec succès.', appointment: newAppointment });
+});
+// **************************Admin
+
+
+// Récupérer tous les comptes (pour admin uniquement)
+exports.getAllUsers = asyncHandler(async (req, res) => {
+  console.log('Admin requesting all users');
+  const users = await User.find().select('-password');
+  console.log('Users found:', users);
+  res.status(200).json(users);
+});
+
+// Mettre à jour un compte (pour admin uniquement)
+exports.updateUser = asyncHandler(async (req, res) => {
+  const { userId } = req.params;
+  const updates = req.body;
+
+  console.log('Admin updating user:', { userId, updates });
+
+  if (updates.password) {
+    return res.status(400).json({ message: 'La modification du mot de passe n’est pas autorisée via cet endpoint.' });
+  }
+
+  if (updates.role === 'admin') {
+    return res.status(403).json({ message: 'Impossible de créer un autre compte admin via cet endpoint.' });
+  }
+
+  const user = await User.findById(userId);
+  if (!user) {
+    console.log('User not found for ID:', userId);
+    return res.status(404).json({ message: 'Utilisateur non trouvé.' });
+  }
+
+  Object.assign(user, updates);
+  user.updatedAt = Date.now();
+  await user.save();
+
+  console.log('User updated:', user);
+  res.status(200).json({ message: 'Utilisateur mis à jour avec succès.', user });
+});
+
+// Supprimer un compte (pour admin uniquement)
+exports.deleteUser = asyncHandler(async (req, res) => {
+  const { userId } = req.params;
+  console.log('Admin deleting user:', userId);
+
+  const user = await User.findById(userId);
+  if (!user) {
+    console.log('User not found for ID:', userId);
+    return res.status(404).json({ message: 'Utilisateur non trouvé.' });
+  }
+
+  // Empêcher la suppression d’un compte admin
+  if (user.role === 'admin') {
+    return res.status(403).json({ message: 'Impossible de supprimer un compte admin.' });
+  }
+
+  await user.deleteOne(); // Remplacer user.remove() par user.deleteOne()
+  console.log('User deleted:', userId);
+  res.status(200).json({ message: 'Utilisateur supprimé avec succès.' });
+});
+
+// Valider la licence d’un médecin (pour admin uniquement)
+exports.validateDoctorLicense = asyncHandler(async (req, res) => {
+  const { userId } = req.params;
+  console.log('Admin validating doctor license for userId:', userId);
+
+  const user = await User.findById(userId);
+  if (!user) {
+    console.log('User not found for ID:', userId);
+    return res.status(404).json({ message: 'Utilisateur non trouvé.' });
+  }
+
+  if (user.role !== 'internaute') {
+    console.log('User is not a doctor. Role:', user.role);
+    return res.status(400).json({ message: 'Cet utilisateur n’est pas un médecin.' });
+  }
+
+  user.validated = true;
+  user.updatedAt = Date.now();
+  await user.save();
+
+  console.log('Doctor license validated:', user);
+  res.status(200).json({ message: 'Licence du médecin validée avec succès.', user });
 });
