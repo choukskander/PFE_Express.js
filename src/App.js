@@ -5,7 +5,7 @@ import { UserProvider, useUser } from "./context/UserContext";
 import Home from "./pages/Home";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
-import Dashboard from "./pages/Dashboard";
+import 'bootstrap/dist/css/bootstrap.min.css';
 import PatientPage from "./pages/RegisterPatient";
 import InternautePage from "./pages/RegisterInternaute";
 import ProfileScreen from "./pages/ProfileScreen";
@@ -17,6 +17,9 @@ import DoctorList from './pages/DoctorList';
 import DoctorSchedulePatient from './pages/DoctorSchedulePatient';
 import DoctorAppointments from './pages/DoctorAppointments';
 import PatientAppointments from './pages/PatientAppointments';
+import AdminDashboard from './components/AdminDashboard';
+import '@fortawesome/fontawesome-free/css/all.min.css';
+
 // Composant pour route protégée selon le rôle
 const RoleProtectedRoute = ({ children, allowedRoles }) => {
   const { user } = useUser();
@@ -50,14 +53,7 @@ function App() {
         <Route path="/my-appointments/patient" element={<PatientAppointments />} />
         <Route path="/doctor" element={<DoctorDashboard />} />
           {/* ✅ Route protégée uniquement pour admin */}
-          <Route
-            path="/dashboard"
-            element={
-              <RoleProtectedRoute allowedRoles={["admin"]}>
-                <Dashboard />
-              </RoleProtectedRoute>
-            }
-          />
+          <Route path="/admin-dashboard" element={<AdminDashboard />} /> 
 
           {/* ✅ 404 fallback */}
           <Route path="*" element={<h1>404 - Page non trouvée</h1>} />
