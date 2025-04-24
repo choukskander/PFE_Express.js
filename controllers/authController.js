@@ -192,7 +192,25 @@ exports.updateUserProfile = asyncHandler(async (req, res) => {
     localisation: updatedUser.localisation,
   });
 });
+// Récupérer les users profil
+exports.getUserProfile = asyncHandler(async (req, res) => {
+  const user = await User.findById(req.user.id);
+  if (!user) {
+    return res.status(404).json({ message: 'Utilisateur non trouvé' });
+  }
 
+  res.json({
+    _id: user._id,
+    nom: user.nom,
+    prenom: user.prenom,
+    email: user.email,
+    role: user.role,
+    specialite: user.specialite,
+    profileImage: user.profileImage,
+    ville: user.ville,
+    localisation: user.localisation,
+  });
+});
 // Récupérer les spécialités uniques
 exports.getSpecialites = asyncHandler(async (req, res) => {
   try {
@@ -262,6 +280,7 @@ exports.searchDoctorsByCity = asyncHandler(async (req, res) => {
   }
 });
 // Mettre à jour les horaires du médecin
+// Mettre à jour les horaires d'un médecin
 exports.updateDoctorSchedule = asyncHandler(async (req, res) => {
   if (!req.user || !req.user.id) {
     return res.status(401).json({ message: 'Utilisateur non authentifié.' });
@@ -303,7 +322,6 @@ exports.updateDoctorSchedule = asyncHandler(async (req, res) => {
 });
 
 // Récupérer les horaires d'un médecin spécifique
-
 exports.getDoctorSchedule = asyncHandler(async (req, res) => {
   const { doctorId } = req.params;
   console.log('Received request for doctorId:', doctorId);
@@ -312,42 +330,6 @@ exports.getDoctorSchedule = asyncHandler(async (req, res) => {
   if (!mongoose.Types.ObjectId.isValid(doctorId)) {
     console.log('Invalid doctorId format:', doctorId);
     return res.status(400).json({ message: 'ID de médecin invalide.' });
-  }
-
-  // Include 'role' in the select fields
-  console.log('Querying database for user with ID:', doctorId);
-  const doctor = await User.findById(doctorId).select('horaires nom prenom specialite role'); // Added 'role'
-  if (!doctor) {
-    console.log('Doctor not found for ID:', doctorId);
-    return res.status(404).json({ message: 'Médecin non trouvé.' });
-  }
-
-  console.log('Doctor found:', doctor);
-  if (doctor.role !== 'internaute') {
-    console.log('User is not a doctor. Role:', doctor.role);
-    return res.status(404).json({ message: 'Médecin non trouvé.' });
-  }
-
-  console.log('Returning schedule for doctor:', doctorId);
-  res.json({ horaires: doctor.horaires, doctor: { nom: doctor.nom, prenom: doctor.prenom, specialite: doctor.specialite } });
-});
-
-// Récupérer les horaires d'un médecin pour les patients
-exports.getDoctorScheduleForPatient = asyncHandler(async (req, res) => {
-  const { doctorId } = req.params;
-  console.log('Patient requesting schedule for doctorId:', doctorId);
-  console.log('Utilisateur authentifié dans getDoctorScheduleForPatient:', req.user); // Ajouter ce log
-
-  if (!mongoose.Types.ObjectId.isValid(doctorId)) {
-    console.log('Invalid doctorId format:', doctorId);
-    return res.status(400).json({ message: 'ID de médecin invalide.' });
-  }
-
-  // Vérifier que l'utilisateur authentifié est un patient
-  console.log('Rôle de l\'utilisateur:', req.user.role); // Ajouter ce log
-  if (req.user.role !== 'patient') {
-    console.log('Access denied. User role:', req.user.role);
-    return res.status(403).json({ message: 'Accès refusé. Seuls les patients peuvent consulter les horaires.' });
   }
 
   console.log('Querying database for user with ID:', doctorId);
@@ -367,9 +349,122 @@ exports.getDoctorScheduleForPatient = asyncHandler(async (req, res) => {
   res.json({ horaires: doctor.horaires, doctor: { nom: doctor.nom, prenom: doctor.prenom, specialite: doctor.specialite } });
 });
 
+// Récupérer les horaires d'un médecin pour les patients avec créneaux disponibles
+exports.getDoctorScheduleForPatient = asyncHandler(async (req, res) => {
+  const { doctorId } = req.params;
+  const { date } = req.query; // Date au format YYYY-MM-DD
+  console.log('Patient requesting schedule for doctorId:', doctorId, 'on date:', date);
+
+  if (!mongoose.Types.ObjectId.isValid(doctorId)) {
+    console.log('Invalid doctorId format:', doctorId);
+    return res.status(400).json({ message: 'ID de médecin invalide.' });
+  }
+
+  // Vérifier que l'utilisateur authentifié est un patient
+  console.log('Rôle de l\'utilisateur:', req.user.role);
+  if (req.user.role !== 'patient') {
+    console.log('Access denied. User role:', req.user.role);
+    return res.status(403).json({ message: 'Accès refusé. Seuls les patients peuvent consulter les horaires.' });
+  }
+
+  console.log('Querying database for user with ID:', doctorId);
+  const doctor = await User.findById(doctorId).select('horaires nom prenom specialite role');
+  if (!doctor) {
+    console.log('Doctor not found for ID:', doctorId);
+    return res.status(404).json({ message: 'Médecin non trouvé.' });
+  }
+
+  console.log('Doctor found:', doctor);
+  if (doctor.role !== 'internaute') {
+    console.log('User is not a doctor. Role:', doctor.role);
+    return res.status(404).json({ message: 'Médecin non trouvé.' });
+  }
+
+  // Si aucune date n'est fournie, retourner uniquement les horaires généraux
+  if (!date) {
+    console.log('No date provided, returning general schedule for doctor:', doctorId);
+    return res.json({
+      horaires: doctor.horaires,
+      doctor: { nom: doctor.nom, prenom: doctor.prenom, specialite: doctor.specialite },
+    });
+  }
+
+  // Valider la date
+  const selectedDate = new Date(date);
+  if (isNaN(selectedDate.getTime())) {
+    return res.status(400).json({ message: 'Date invalide. Utilisez le format YYYY-MM-DD.' });
+  }
+
+  // Vérifier si la date est dans le passé par rapport à la date et l'heure actuelles
+  const now = new Date();
+  if (selectedDate < now) {
+    return res.status(400).json({ message: 'Vous ne pouvez pas prendre de rendez-vous dans le passé.' });
+  }
+
+  const dayName = selectedDate.toLocaleString('fr-FR', { weekday: 'long' }).toLowerCase();
+  const horaires = doctor.horaires[dayName];
+
+  if (horaires.ferme) {
+    return res.status(400).json({ message: `Le médecin est fermé le ${dayName}.` });
+  }
+
+  // Générer les créneaux horaires disponibles (par intervalles de 30 minutes)
+  const [openHour, openMinute] = horaires.ouverture.split(':').map(Number);
+  const [closeHour, closeMinute] = horaires.fermeture.split(':').map(Number);
+
+  let startTime = openHour * 60 + openMinute;
+  const endTime = closeHour * 60 + closeMinute;
+  const interval = 30; // Créneaux de 30 minutes
+  let availableSlots = [];
+
+  // Ajuster l'heure de début si la date est aujourd'hui
+  if (selectedDate.toDateString() === now.toDateString()) {
+    const currentHour = now.getHours();
+    const currentMinute = now.getMinutes();
+    const currentTime = currentHour * 60 + currentMinute;
+    startTime = Math.max(startTime, currentTime + interval); // Commencer après l'heure actuelle
+  }
+
+  // Générer les créneaux
+  while (startTime + interval <= endTime) {
+    const slotHour = Math.floor(startTime / 60);
+    const slotMinute = startTime % 60;
+    const slotTime = `${slotHour.toString().padStart(2, '0')}:${slotMinute.toString().padStart(2, '0')}`;
+    availableSlots.push(slotTime);
+    startTime += interval;
+  }
+
+  // Récupérer les rendez-vous existants pour ce jour
+  const startOfDay = new Date(selectedDate);
+  startOfDay.setHours(0, 0, 0, 0);
+  const endOfDay = new Date(selectedDate);
+  endOfDay.setHours(23, 59, 59, 999);
+
+  const existingAppointments = await Appointment.find({
+    doctorId,
+    date: { $gte: startOfDay, $lte: endOfDay },
+    status: { $in: ['confirmed', 'pending'] }, // Exclure les annulés
+  });
+
+  // Filtrer les créneaux déjà pris
+  const bookedSlots = existingAppointments.map((appointment) => {
+    const date = new Date(appointment.date);
+    return `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
+  });
+
+  availableSlots = availableSlots.filter((slot) => !bookedSlots.includes(slot));
+
+  res.json({
+    horaires: doctor.horaires,
+    doctor: { nom: doctor.nom, prenom: doctor.prenom, specialite: doctor.specialite },
+    availableSlots,
+    selectedDate: selectedDate.toISOString().split('T')[0],
+  });
+});
+
 // Prendre un rendez-vous
 exports.bookAppointment = asyncHandler(async (req, res) => {
-  const { doctorId, date } = req.body;
+  const { doctorId, date, time } = req.body;
   const patientId = req.user.id;
 
   const doctor = await User.findById(doctorId);
@@ -382,10 +477,19 @@ exports.bookAppointment = asyncHandler(async (req, res) => {
     return res.status(403).json({ message: 'Seuls les patients peuvent prendre des rendez-vous.' });
   }
 
-  // Vérifier si le créneau est disponible
+  // Construire la date et l'heure du rendez-vous
+  const [hours, minutes] = time.split(':').map(Number);
   const appointmentDate = new Date(date);
+  appointmentDate.setHours(hours, minutes, 0, 0);
+
+  // Vérifier si la date est dans le passé
+  const now = new Date();
+  if (appointmentDate < now) {
+    return res.status(400).json({ message: 'Vous ne pouvez pas prendre de rendez-vous dans le passé.' });
+  }
+
   const dayName = appointmentDate.toLocaleString('fr-FR', { weekday: 'long' }).toLowerCase();
-  const horaires = doctor.horaires.get(dayName);
+  const horaires = doctor.horaires[dayName];
 
   if (horaires.ferme) {
     return res.status(400).json({ message: `Le médecin est fermé le ${dayName}.` });
@@ -411,6 +515,7 @@ exports.bookAppointment = asyncHandler(async (req, res) => {
       $gte: new Date(appointmentDate.getTime() - 15 * 60 * 1000), // 15 minutes avant
       $lte: new Date(appointmentDate.getTime() + 15 * 60 * 1000), // 15 minutes après
     },
+    status: { $in: ['confirmed', 'pending'] }, // Exclure les annulés
   });
 
   if (existingAppointment) {
@@ -421,6 +526,7 @@ exports.bookAppointment = asyncHandler(async (req, res) => {
     doctorId,
     patientId,
     date: appointmentDate,
+    status: 'pending', // Statut initial
   });
 
   await newAppointment.save();

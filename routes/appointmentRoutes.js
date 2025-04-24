@@ -6,6 +6,7 @@ const {
   getPatientAppointments,
   cancelAppointment,
   updateAppointmentStatus,
+  getAllAppointments, 
 } = require('../controllers/appointmentController');
 const authMiddleware = require('../middleware/authMiddleware');
 
@@ -20,7 +21,11 @@ router.get('/patient', authMiddleware, getPatientAppointments);
 
 // Route pour annuler un rendez-vous (patients ou médecins)
 router.put('/cancel/:appointmentId', authMiddleware, cancelAppointment);
+
 // Route pour modifier le statut d’un rendez-vous
 router.put('/:appointmentId/status', authMiddleware, updateAppointmentStatus);
+
+// Route pour récupérer tous les rendez-vous (admins uniquement)
+router.get('/', authMiddleware, getAllAppointments);
 
 module.exports = router;

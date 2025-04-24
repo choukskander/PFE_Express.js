@@ -16,6 +16,11 @@ app.use(fileUpload({
   limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
   abortOnLimit: true
 }));
+// CORS Middleware
+app.use(cors({
+  origin: 'http://localhost:3000',
+  credentials: true,
+}));
 app.use(cors());
 app.use("/uploads", express.static(path.join(__dirname, "Uploads")));
 
