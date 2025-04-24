@@ -2,15 +2,20 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import Swal from 'sweetalert2';
 import { useNavigate } from 'react-router-dom';
-import { Card, Button, Row, Col, Badge, Nav } from 'react-bootstrap';
-import { FaUserMd, FaUsers, FaUserShield, FaSignOutAlt, FaChevronLeft, FaChevronRight } from 'react-icons/fa';
-import * as echarts from 'echarts';
+import { Card, Button, Row, Col, Badge, Nav, Table } from 'react-bootstrap';
+import { FaUserMd, FaUsers, FaUserShield, FaSignOutAlt, FaChevronLeft, FaChevronRight, FaCalendarAlt } from 'react-icons/fa';
+import { Chart as ChartJS, BarElement, CategoryScale, LinearScale, Title, Tooltip, Legend, ArcElement } from 'chart.js';
+import { Bar, Pie } from 'react-chartjs-2';
+
+// Register Chart.js components
+ChartJS.register(BarElement, CategoryScale, LinearScale, Title, Tooltip, Legend, ArcElement);
 
 const AdminDashboard = () => {
   const navigate = useNavigate();
   const [users, setUsers] = useState([]);
+  const [appointments, setAppointments] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [activeSection, setActiveSection] = useState('users'); // Changed to 'users' to match new design
+  const [activeSection, setActiveSection] = useState('dashboard');
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('Tous');
@@ -20,10 +25,12 @@ const AdminDashboard = () => {
   const [currentUser, setCurrentUser] = useState(null);
   const [showSuccessNotification, setShowSuccessNotification] = useState(false);
   const [notificationMessage, setNotificationMessage] = useState('');
+  const [appointmentStatusFilter, setAppointmentStatusFilter] = useState('Tous');
+  const [doctorValidationFilter, setDoctorValidationFilter] = useState('Tous');
 
-  // Fetch users from the API
+  // Fetch users and appointments from the API
   useEffect(() => {
-    const fetchUsers = async () => {
+    const fetchData = async () => {
       const token = localStorage.getItem('token');
       if (!token) {
         navigate('/login');
@@ -31,17 +38,27 @@ const AdminDashboard = () => {
       }
 
       try {
-        const response = await axios.get('http://localhost:5000/api/auth/users', {
+        const usersResponse = await axios.get('http://localhost:5000/api/auth/users', {
           headers: { Authorization: `Bearer ${token}` },
         });
-        setUsers(response.data);
+        console.log('API Response (users):', usersResponse.data);
+        setUsers(usersResponse.data);
+
+        const appointmentsResponse = await axios.get('http://localhost:5000/api/appointments', {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        console.log('API Response (appointments):', appointmentsResponse.data);
+        setAppointments(appointmentsResponse.data);
+
         setLoading(false);
       } catch (err) {
+        console.error('Error fetching data:', err);
+        console.error('Error response:', err.response);
         setLoading(false);
         Swal.fire({
           icon: 'error',
           title: 'Erreur',
-          text: err.response?.data?.message || 'Une erreur s\'est produite lors de la récupération des utilisateurs.',
+          text: err.response?.data?.message || 'Une erreur s\'est produite lors de la récupération des données.',
           toast: true,
           position: 'top-end',
           timer: 3000,
@@ -54,61 +71,8 @@ const AdminDashboard = () => {
       }
     };
 
-    fetchUsers();
+    fetchData();
   }, [navigate]);
-
-  // Initialize the ECharts chart
-  useEffect(() => {
-    const chartDom = document.getElementById('usersChart');
-    if (chartDom) {
-      const myChart = echarts.init(chartDom);
-      const option = {
-        animation: false,
-        title: {
-          text: 'Nouveaux Utilisateurs',
-          left: 'center',
-          textStyle: { fontSize: 14 },
-        },
-        tooltip: { trigger: 'axis' },
-        xAxis: {
-          type: 'category',
-          data: ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Juin', 'Juil'],
-        },
-        yAxis: { type: 'value' },
-        series: [
-          {
-            data: [45, 62, 87, 76, 95, 82, 87],
-            type: 'line',
-            smooth: true,
-            lineStyle: { color: '#0d6efd' },
-            areaStyle: {
-              color: {
-                type: 'linear',
-                x: 0,
-                y: 0,
-                x2: 0,
-                y2: 1,
-                colorStops: [
-                  { offset: 0, color: 'rgba(13, 110, 253, 0.5)' },
-                  { offset: 1, color: 'rgba(13, 110, 253, 0.1)' },
-                ],
-              },
-            },
-          },
-        ],
-        grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
-      };
-      myChart.setOption(option);
-
-      const handleResize = () => myChart.resize();
-      window.addEventListener('resize', handleResize);
-
-      return () => {
-        window.removeEventListener('resize', handleResize);
-        myChart.dispose();
-      };
-    }
-  }, []);
 
   // Filter users
   const medecins = users.filter((user) => user.role === 'internaute');
@@ -122,26 +86,31 @@ const AdminDashboard = () => {
       const registrationDate = new Date(user.createdAt);
       const now = new Date();
       const diffDays = (now - registrationDate) / (1000 * 60 * 60 * 24);
-      return diffDays <= 30; // Users registered in the last 30 days
+      return diffDays <= 30;
     }).length,
     activeUsers: users.filter((user) => user.validated).length,
-    appointments: 342, // Static for now; replace with API data if available
+    appointments: appointments.filter((appointment) => appointment.status === 'confirmed').length,
   };
 
   // Combined user list for the table
-  const allUsers = users.map((user) => ({
-    id: user._id,
-    name: `${user.nom} ${user.prenom}`,
-    email: user.email,
-    type: user.role === 'internaute' ? 'Médecin' : user.role === 'patient' ? 'Patient' : 'Admin',
-    date: user.createdAt ? new Date(user.createdAt).toLocaleDateString('fr-FR') : 'N/A',
-    status: user.validated ? 'Actif' : 'Inactif',
-    validated: user.validated,
-    specialite: user.specialite,
-    ville: user.ville,
-    localisation: user.localisation,
-    licenceProfessionnelle: user.licenceProfessionnelle,
-  }));
+  const allUsers = users.map((user) => {
+    const mappedUser = {
+      id: user._id,
+      name: `${user.nom} ${user.prenom}`,
+      email: user.email,
+      type: user.role === 'internaute' ? 'Médecin' : user.role === 'patient' ? 'Patient' : 'Admin',
+      date: user.createdAt ? new Date(user.createdAt).toLocaleDateString('fr-FR') : 'N/A',
+      status: user.validated ? 'Actif' : 'Inactif',
+      validated: user.validated,
+      specialite: user.specialite,
+      ville: user.ville,
+      localisation: user.localisation,
+      licenceProfessionnelle: user.licenceProfessionnelle,
+      profileImage: user.profileImage,
+    };
+    console.log('Mapped User:', mappedUser);
+    return mappedUser;
+  });
 
   // Filter users for the table
   const filteredUsers = allUsers.filter((user) => {
@@ -159,7 +128,172 @@ const AdminDashboard = () => {
     return matchesSearch && matchesStatus && matchesType && matchesDate;
   });
 
-  // Functions from the original code
+  // Filter doctors for validation status
+  const filteredMedecins = medecins.filter((medecin) => {
+    if (doctorValidationFilter === 'Tous') return true;
+    if (doctorValidationFilter === 'Validés') return medecin.validated;
+    if (doctorValidationFilter === 'Non Validés') return !medecin.validated;
+    return true;
+  });
+
+  // Filter appointments for the table
+  const filteredAppointments = appointments.filter((appointment) => {
+    const matchesStatus =
+      appointmentStatusFilter === 'Tous' ||
+      appointment.status === appointmentStatusFilter.toLowerCase();
+    return matchesStatus;
+  });
+
+  // Calculate appointments by status per month for the last 7 months (October 2024 to April 2025)
+  const calculateAppointmentsByStatusPerMonth = () => {
+    const months = [];
+    const monthLabels = [];
+    const now = new Date(); // Current date: April 23, 2025
+    const endMonth = now.getMonth(); // 3 (April)
+    const endYear = now.getFullYear(); // 2025
+
+    // Generate the last 7 months (from October 2024 to April 2025)
+    for (let i = 6; i >= 0; i--) {
+      const date = new Date(endYear, endMonth - i, 1);
+      const month = date.getMonth(); // 0-11
+      const year = date.getFullYear();
+      months.push({ month, year });
+      monthLabels.push(date.toLocaleString('fr-FR', { month: 'short' })); // e.g., "oct.", "nov.", etc.
+    }
+
+    // Count appointments for each status per month
+    const confirmedData = months.map(({ month, year }) => {
+      return appointments.filter((appointment) => {
+        const appointmentDate = new Date(appointment.date);
+        return (
+          appointmentDate.getMonth() === month &&
+          appointmentDate.getFullYear() === year &&
+          appointment.status === 'confirmed'
+        );
+      }).length;
+    });
+
+    const pendingData = months.map(({ month, year }) => {
+      return appointments.filter((appointment) => {
+        const appointmentDate = new Date(appointment.date);
+        return (
+          appointmentDate.getMonth() === month &&
+          appointmentDate.getFullYear() === year &&
+          appointment.status === 'pending'
+        );
+      }).length;
+    });
+
+    const cancelledData = months.map(({ month, year }) => {
+      return appointments.filter((appointment) => {
+        const appointmentDate = new Date(appointment.date);
+        return (
+          appointmentDate.getMonth() === month &&
+          appointmentDate.getFullYear() === year &&
+          appointment.status === 'cancelled'
+        );
+      }).length;
+    });
+
+    return { labels: monthLabels, confirmedData, pendingData, cancelledData };
+  };
+
+  const { labels, confirmedData, pendingData, cancelledData } = calculateAppointmentsByStatusPerMonth();
+
+  // Data for Stacked Bar Chart (Appointments by Status per Month)
+  const barChartData = {
+    labels, // e.g., ['oct.', 'nov.', 'déc.', 'janv.', 'févr.', 'mars', 'avr.']
+    datasets: [
+      {
+        label: 'Confirmé',
+        data: confirmedData,
+        backgroundColor: 'rgba(40, 167, 69, 0.6)', // Green
+        borderColor: '#28a745',
+        borderWidth: 1,
+      },
+      {
+        label: 'En attente',
+        data: pendingData,
+        backgroundColor: 'rgba(255, 193, 7, 0.6)', // Yellow
+        borderColor: '#ffc107',
+        borderWidth: 1,
+      },
+      {
+        label: 'Annulé',
+        data: cancelledData,
+        backgroundColor: 'rgba(220, 53, 69, 0.6)', // Red
+        borderColor: '#dc3545',
+        borderWidth: 1,
+      },
+    ],
+  };
+
+  const barChartOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        position: 'top',
+      },
+      title: {
+        display: true,
+        text: 'Rendez-vous par Statut par Mois',
+        font: { size: 14 },
+      },
+    },
+    scales: {
+      x: {
+        stacked: true,
+        title: {
+          display: true,
+          text: 'Mois',
+        },
+      },
+      y: {
+        stacked: true,
+        title: {
+          display: true,
+          text: 'Nombre de Rendez-vous',
+        },
+        beginAtZero: true,
+      },
+    },
+  };
+
+  // Data for Pie Chart (User Role Distribution)
+  const pieChartData = {
+    labels: ['Médecins', 'Patients', 'Admins'],
+    datasets: [
+      {
+        label: 'Répartition des Rôles',
+        data: [medecins.length, patients.length, admins.length],
+        backgroundColor: [
+          'rgba(13, 110, 253, 0.6)',
+          'rgba(40, 167, 69, 0.6)',
+          'rgba(255, 193, 7, 0.6)',
+        ],
+        borderColor: ['#0d6efd', '#28a745', '#ffc107'],
+        borderWidth: 1,
+      },
+    ],
+  };
+
+  const pieChartOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: {
+        position: 'top',
+      },
+      title: {
+        display: true,
+        text: 'Répartition des Utilisateurs par Rôle',
+        font: { size: 14 },
+      },
+    },
+  };
+
+  // Functions
   const handleDeleteUser = async (userId) => {
     const result = await Swal.fire({
       title: 'Êtes-vous sûr ?',
@@ -235,7 +369,6 @@ const AdminDashboard = () => {
 
   const isCloudinaryUrl = (url) => url && url.startsWith('https://res.cloudinary.com');
 
-  // New functions for the modern dashboard
   const handleEditUser = (user) => {
     setCurrentUser(user);
     setIsModalOpen(true);
@@ -258,7 +391,7 @@ const AdminDashboard = () => {
     }, 3000);
   };
 
-  const handleSubmitEdit = (e) => {
+  const handleSubmitEdit = async (e) => {
     e.preventDefault();
     const formData = new FormData(e.target);
     const updatedName = formData.get('name').split(' ');
@@ -267,17 +400,39 @@ const AdminDashboard = () => {
       nom: updatedName[0] || currentUser.nom,
       prenom: updatedName[1] || currentUser.prenom,
       email: formData.get('email'),
-      type: formData.get('type'),
+      role: formData.get('type') === 'Médecin' ? 'internaute' : formData.get('type').toLowerCase(),
       validated: formData.get('status') === 'Actif',
     };
 
-    setUsers(
-      users.map((user) =>
-        user._id === updatedUser.id ? { ...user, ...updatedUser } : user
-      )
-    );
-    setIsModalOpen(false);
-    showNotification('Utilisateur mis à jour avec succès');
+    const token = localStorage.getItem('token');
+    try {
+      await axios.put(
+        `http://localhost:5000/api/auth/users/${updatedUser.id}`,
+        updatedUser,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      setUsers(
+        users.map((user) =>
+          user._id === updatedUser.id ? { ...user, ...updatedUser } : user
+        )
+      );
+      setIsModalOpen(false);
+      showNotification('Utilisateur mis à jour avec succès');
+    } catch (err) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Erreur',
+        text: err.response?.data?.message || 'Impossible de mettre à jour l\'utilisateur.',
+        toast: true,
+        position: 'top-end',
+        timer: 3000,
+        timerProgressBar: true,
+      });
+    }
+  };
+
+  const handleAddUser = () => {
+    navigate('/register');
   };
 
   if (loading) {
@@ -396,6 +551,24 @@ const AdminDashboard = () => {
             )}
           </Nav.Link>
           <Nav.Link
+            onClick={() => setActiveSection('appointments')}
+            style={{
+              padding: '12px 20px',
+              display: 'flex',
+              alignItems: 'center',
+              backgroundColor: activeSection === 'appointments' ? '#ffffff' : 'transparent',
+              color: activeSection === 'appointments' ? '#0d6efd' : 'white',
+            }}
+          >
+            <FaCalendarAlt className="me-2" />
+            {sidebarOpen && <span>Rendez-vous</span>}
+            {sidebarOpen && (
+              <Badge bg="light" text="dark" className="ms-2">
+                {appointments.length}
+              </Badge>
+            )}
+          </Nav.Link>
+          <Nav.Link
             onClick={handleLogout}
             style={{
               padding: '12px 20px',
@@ -430,6 +603,7 @@ const AdminDashboard = () => {
               {activeSection === 'medecins' && 'Gestion des Médecins'}
               {activeSection === 'patients' && 'Gestion des Patients'}
               {activeSection === 'admins' && 'Gestion des Admins'}
+              {activeSection === 'appointments' && 'Gestion des Rendez-vous'}
             </h1>
             <div className="d-flex align-items-center">
               <div className="position-relative me-3">
@@ -452,10 +626,11 @@ const AdminDashboard = () => {
               </div>
               <div className="d-flex align-items-center">
                 <img
-                  src="https://via.placeholder.com/40"
+                  src="/admin.png"
                   alt="Admin"
                   className="rounded-circle me-2"
                   style={{ width: '40px', height: '40px', objectFit: 'cover' }}
+                  onError={(e) => (e.target.src = '/placeholder-profile-image.jpg')}
                 />
                 <span className="text-muted">Admin</span>
                 <Button variant="link" className="p-2">
@@ -476,13 +651,13 @@ const AdminDashboard = () => {
 
         {/* Main Section */}
         <main className="p-4">
-          {/* Dashboard Section (Statistics and Chart) */}
+          {/* Dashboard Section (Statistics and Charts) */}
           {activeSection === 'dashboard' && (
             <>
               {/* Statistics Widgets */}
               <Row className="mb-4">
                 <Col lg={3} md={6} className="mb-4">
-                  <Card className="shadow-sm">
+                  <Card className="Lifeline Chart shadow-sm">
                     <Card.Body className="d-flex align-items-center">
                       <div className="p-3 rounded-circle bg-primary bg-opacity-10 text-primary me-3">
                         <i className="fas fa-users fs-4"></i>
@@ -543,12 +718,17 @@ const AdminDashboard = () => {
                 </Col>
               </Row>
 
-              {/* Chart and Filters */}
+              {/* Charts Section */}
               <Row className="mb-4">
                 <Col lg={8} className="mb-4">
                   <Card className="shadow-sm">
                     <Card.Body>
-                      <div id="usersChart" style={{ height: '300px', width: '100%' }}></div>
+                      <div style={{ height: '300px', width: '100%' }}>
+                        <Bar data={barChartData} options={barChartOptions} />
+                      </div>
+                      <div style={{ height: '300px', width: '100%', marginTop: '20px' }}>
+                        <Pie data={pieChartData} options={pieChartOptions} />
+                      </div>
                     </Card.Body>
                   </Card>
                 </Col>
@@ -618,13 +798,13 @@ const AdminDashboard = () => {
               <Card.Body>
                 <div className="d-flex justify-content-between align-items-center mb-4">
                   <h5>Liste des utilisateurs</h5>
-                  <Button variant="primary" size="sm">
+                  <Button variant="primary" size="sm" onClick={handleAddUser}>
                     <i className="fas fa-plus me-2"></i> Ajouter un utilisateur
                   </Button>
                 </div>
                 <div className="table-responsive">
-                  <table className="table table-hover">
-                    <thead className="table-light">
+                  <Table striped bordered hover>
+                    <thead>
                       <tr>
                         <th>Utilisateur</th>
                         <th>Email</th>
@@ -640,10 +820,20 @@ const AdminDashboard = () => {
                           <td>
                             <div className="d-flex align-items-center">
                               <img
-                                src="https://via.placeholder.com/40"
+                                src={
+                                  user.profileImage && user.profileImage !== ''
+                                    ? isCloudinaryUrl(user.profileImage)
+                                      ? user.profileImage
+                                      : `http://localhost:5000/${user.profileImage.replace(/^\/+/, '')}`
+                                    : '/placeholder-profile-image.jpg'
+                                }
                                 alt={user.name}
                                 className="rounded-circle me-2"
                                 style={{ width: '40px', height: '40px', objectFit: 'cover' }}
+                                onError={(e) => {
+                                  console.log('Image failed to load:', e.target.src);
+                                  e.target.src = '/placeholder-profile-image.jpg';
+                                }}
                               />
                               <span>{user.name}</span>
                             </div>
@@ -682,7 +872,7 @@ const AdminDashboard = () => {
                         </tr>
                       ))}
                     </tbody>
-                  </table>
+                  </Table>
                 </div>
                 <div className="d-flex justify-content-between align-items-center border-top pt-3">
                   <span className="text-muted">
@@ -704,14 +894,34 @@ const AdminDashboard = () => {
             </Card>
           )}
 
-          {/* Original Sections (Médecins, Patients, Admins) */}
+          {/* Médecins Section */}
           {activeSection === 'medecins' && (
             <>
-              {medecins.length === 0 ? (
+              <Card className="shadow-sm mb-4">
+                <Card.Body>
+                  <h5 className="mb-4">Filtres</h5>
+                  <div className="mb-4">
+                    <label className="form-label">Statut de validation</label>
+                    <div className="d-flex gap-2">
+                      {['Tous', 'Validés', 'Non Validés'].map((filter) => (
+                        <Button
+                          key={filter}
+                          variant={doctorValidationFilter === filter ? 'primary' : 'outline-secondary'}
+                          size="sm"
+                          onClick={() => setDoctorValidationFilter(filter)}
+                        >
+                          {filter}
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+                </Card.Body>
+              </Card>
+              {filteredMedecins.length === 0 ? (
                 <p className="text-center text-muted mt-3">Aucun médecin trouvé.</p>
               ) : (
                 <Row>
-                  {medecins.map((user) => (
+                  {filteredMedecins.map((user) => (
                     <Col md={4} key={user._id} className="mb-4">
                       <Card className="shadow-sm h-100">
                         <Card.Body>
@@ -781,6 +991,7 @@ const AdminDashboard = () => {
             </>
           )}
 
+          {/* Patients Section */}
           {activeSection === 'patients' && (
             <>
               {patients.length === 0 ? (
@@ -813,6 +1024,7 @@ const AdminDashboard = () => {
             </>
           )}
 
+          {/* Admins Section */}
           {activeSection === 'admins' && (
             <>
               {admins.length === 0 ? (
@@ -845,6 +1057,91 @@ const AdminDashboard = () => {
               )}
             </>
           )}
+
+          {/* Appointments Section */}
+          {activeSection === 'appointments' && (
+            <Card className="shadow-sm">
+              <Card.Body>
+                <div className="d-flex justify-content-between align-items-center mb-4">
+                  <h5>Liste des rendez-vous</h5>
+                </div>
+                <div className="mb-4">
+                  <label className="form-label">Filtrer par statut</label>
+                  <div className="d-flex gap-2">
+                    {['Tous', 'Pending', 'Confirmed', 'Cancelled'].map((filter) => (
+                      <Button
+                        key={filter}
+                        variant={appointmentStatusFilter === filter ? 'primary' : 'outline-secondary'}
+                        size="sm"
+                        onClick={() => setAppointmentStatusFilter(filter)}
+                      >
+                        {filter === 'Pending' ? 'En attente' : filter === 'Confirmed' ? 'Confirmé' : filter === 'Cancelled' ? 'Annulé' : 'Tous'}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+                <div className="table-responsive">
+                  <Table striped bordered hover>
+                    <thead>
+                      <tr>
+                        <th>Patient</th>
+                        <th>Médecin</th>
+                        <th>Date</th>
+                        <th>Heure</th>
+                        <th>Statut</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredAppointments.map((appointment) => {
+                        const appointmentDate = new Date(appointment.date);
+                        return (
+                          <tr key={appointment._id}>
+                            <td>{appointment.patientId ? `${appointment.patientId.nom} ${appointment.patientId.prenom}` : 'Inconnu'}</td>
+                            <td>{appointment.doctorId ? `${appointment.doctorId.nom} ${appointment.doctorId.prenom}` : 'Inconnu'}</td>
+                            <td>{appointmentDate.toLocaleDateString('fr-FR')}</td>
+                            <td>{appointment.time}</td>
+                            <td>
+                              <Badge
+                                bg={
+                                  appointment.status === 'confirmed'
+                                    ? 'success'
+                                    : appointment.status === 'pending'
+                                    ? 'warning'
+                                    : 'danger'
+                                }
+                              >
+                                {appointment.status === 'confirmed'
+                                  ? 'Confirmé'
+                                  : appointment.status === 'pending'
+                                  ? 'En attente'
+                                  : 'Annulé'}
+                              </Badge>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </Table>
+                </div>
+                <div className="d-flex justify-content-between align-items-center border-top pt-3">
+                  <span className="text-muted">
+                    Affichage de 1 à {filteredAppointments.length} sur {appointments.length} résultats
+                  </span>
+                  <div className="d-flex gap-2">
+                    <Button variant="outline-secondary" size="sm">
+                      Précédent
+                    </Button>
+                    <Button variant="primary" size="sm">
+                      1
+                    </Button>
+                    <Button variant="outline-secondary" size="sm">
+                      Suivant
+                    </Button>
+                  </div>
+                </div>
+              </Card.Body>
+            </Card>
+          )}
         </main>
       </div>
 
@@ -866,10 +1163,20 @@ const AdminDashboard = () => {
                 <div className="text-center mb-4">
                   <div className="position-relative d-inline-block">
                     <img
-                      src="https://via.placeholder.com/96"
+                      src={
+                        currentUser.profileImage && currentUser.profileImage !== ''
+                          ? isCloudinaryUrl(currentUser.profileImage)
+                            ? currentUser.profileImage
+                            : `http://localhost:5000/${currentUser.profileImage.replace(/^\/+/, '')}`
+                          : '/placeholder-profile-image.jpg'
+                      }
                       alt={currentUser.name}
                       className="rounded-circle"
                       style={{ width: '96px', height: '96px', objectFit: 'cover' }}
+                      onError={(e) => {
+                        console.log('Image failed to load in modal:', e.target.src);
+                        e.target.src = '/placeholder-profile-image.jpg';
+                      }}
                     />
                     <Button
                       variant="primary"

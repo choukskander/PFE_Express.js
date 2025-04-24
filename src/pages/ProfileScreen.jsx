@@ -8,12 +8,13 @@ import Navbar from './Navbar';
 const ProfileScreen = () => {
   const navigate = useNavigate();
   const [user, setUser] = useState(null);
+  const [token, setToken] = useState(''); // New state for token
   const [nom, setNom] = useState('');
   const [prenom, setPrenom] = useState('');
   const [email, setEmail] = useState('');
   const [specialite, setSpecialite] = useState('');
-  const [ville, setVille] = useState(''); 
-  const [localisation, setLocalisation] = useState(''); 
+  const [ville, setVille] = useState('');
+  const [localisation, setLocalisation] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [profileImage, setProfileImage] = useState(null);
@@ -23,17 +24,59 @@ const ProfileScreen = () => {
     const storedUser = localStorage.getItem('user');
     if (!storedUser) {
       navigate('/login');
-    } else {
-      const parsedUser = JSON.parse(storedUser);
-      setUser(parsedUser);
-      setNom(parsedUser.nom || '');
-      setPrenom(parsedUser.prenom || '');
-      setEmail(parsedUser.email || '');
-      setSpecialite(parsedUser.specialite || '');
-      setVille(parsedUser.ville || ''); 
-      setLocalisation(parsedUser.localisation || ''); 
-      setPreviewImage(parsedUser.profileImage || '/placeholder-profile-image.jpg');
+      return;
     }
+
+    const parsedUser = JSON.parse(storedUser);
+    setUser(parsedUser);
+    setToken(parsedUser.token); // Store the token separately
+
+    // Fetch user data from the database
+    const fetchUserProfile = async () => {
+      try {
+        const config = {
+          headers: {
+            Authorization: `Bearer ${parsedUser.token}`,
+          },
+        };
+        const { data } = await axios.get('http://localhost:5000/api/auth/profile', config);
+        // Update state with the latest data from the database
+        setUser(data);
+        setNom(data.nom || '');
+        setPrenom(data.prenom || '');
+        setEmail(data.email || '');
+        setSpecialite(data.specialite || '');
+        setVille(data.ville || '');
+        setLocalisation(data.localisation || '');
+        setPreviewImage(data.profileImage || '/placeholder-profile-image.jpg');
+      } catch (err) {
+        console.error('Erreur lors de la récupération du profil:', err);
+        if (err.response?.status === 401) {
+          localStorage.removeItem('user');
+          navigate('/login');
+          Swal.fire({
+            icon: 'error',
+            title: 'Session expirée',
+            text: 'Veuillez vous reconnecter.',
+            toast: true,
+            position: 'top-end',
+            timer: 3000,
+            timerProgressBar: true,
+          });
+        } else {
+          Swal.fire({
+            icon: 'error',
+            title: 'Erreur',
+            text: err.response?.data?.message || 'Une erreur s\'est produite lors de la récupération du profil.',
+            toast: true,
+            position: 'top-end',
+            timer: 3000,
+            timerProgressBar: true,
+          });
+        }
+      }
+    };
+    fetchUserProfile();
   }, [navigate]);
 
   const handleImageChange = (e) => {
@@ -46,7 +89,7 @@ const ProfileScreen = () => {
 
   const handleUpdate = async (e) => {
     e.preventDefault();
-    if (password && password !== confirmPassword) {
+    if (password && confirmPassword && password !== confirmPassword) {
       Swal.fire({
         icon: 'error',
         title: 'Erreur',
@@ -66,12 +109,11 @@ const ProfileScreen = () => {
       formData.append('email', email || '');
       if (user.role === 'internaute') {
         formData.append('specialite', specialite || '');
-        formData.append('ville', ville || ''); 
-        formData.append('localisation', localisation || ''); 
+        formData.append('ville', ville || '');
+        formData.append('localisation', localisation || '');
       }
-      if (password) {
-        formData.append('password', password);
-      }
+      formData.append('password', password || ''); // Always append password (empty or not)
+
       if (profileImage) {
         formData.append('profileImage', profileImage);
       }
@@ -83,7 +125,7 @@ const ProfileScreen = () => {
 
       const config = {
         headers: {
-          Authorization: `Bearer ${user.token}`,
+          Authorization: `Bearer ${token}`, // Use the separately stored token
           'Content-Type': 'multipart/form-data',
         },
       };
@@ -94,14 +136,16 @@ const ProfileScreen = () => {
         config
       );
 
+      // Update localStorage with the latest data
       localStorage.setItem('user', JSON.stringify({
         ...user,
+        token, // Preserve the token in localStorage
         nom: data.nom,
         prenom: data.prenom,
         email: data.email,
         specialite: data.specialite,
-        ville: data.ville, 
-        localisation: data.localisation, 
+        ville: data.ville,
+        localisation: data.localisation,
         profileImage: data.profileImage,
       }));
       setUser({
@@ -110,8 +154,8 @@ const ProfileScreen = () => {
         prenom: data.prenom,
         email: data.email,
         specialite: data.specialite,
-        ville: data.ville, 
-        localisation: data.localisation, 
+        ville: data.ville,
+        localisation: data.localisation,
         profileImage: data.profileImage,
       });
       setPreviewImage(data.profileImage || '/placeholder-profile-image.jpg');

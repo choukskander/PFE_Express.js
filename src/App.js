@@ -9,7 +9,6 @@ import 'bootstrap/dist/css/bootstrap.min.css';
 import PatientPage from "./pages/RegisterPatient";
 import InternautePage from "./pages/RegisterInternaute";
 import ProfileScreen from "./pages/ProfileScreen";
-import PatientDashboard from './pages/PatientDashboard';
 import DoctorDashboard from './pages/DoctorDashboard';
 import SearchDoctors from './pages/SearchDoctors';
 import DoctorSchedule from './pages/DoctorSchedule';
@@ -44,7 +43,7 @@ function App() {
           {/* ✅ Pages de création de compte accessibles librement */}
           <Route path="/registerpatient" element={<PatientPage />} />
           <Route path="/registerinternaute" element={<InternautePage />} />
-          <Route path="/patient" element={<PatientDashboard />} />
+          
           <Route path="/search-doctors" element={<SearchDoctors />} />
           <Route path="/doctor-schedule" element={<DoctorSchedule />} />
           <Route path="/doctors" element={<DoctorList />} />
