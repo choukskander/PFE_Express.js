@@ -16,6 +16,7 @@ import DoctorList from './pages/DoctorList';
 import DoctorSchedulePatient from './pages/DoctorSchedulePatient';
 import DoctorAppointments from './pages/DoctorAppointments';
 import PatientAppointments from './pages/PatientAppointments';
+import MeetingPage from './pages/Meeting';
 import AdminDashboard from './components/AdminDashboard';
 import '@fortawesome/fontawesome-free/css/all.min.css';
 import 'antd/dist/reset.css';
@@ -52,6 +53,7 @@ function App() {
         <Route path="/my-appointments/doctor" element={<DoctorAppointments />} />
         <Route path="/my-appointments/patient" element={<PatientAppointments />} />
         <Route path="/doctor" element={<DoctorDashboard />} />
+        <Route path="/meeting" element={<MeetingPage />} />
           {/* ✅ Route protégée uniquement pour admin */}
           <Route path="/admin-dashboard" element={<AdminDashboard />} /> 
 
