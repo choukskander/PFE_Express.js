@@ -392,12 +392,38 @@ const DoctorAppointments = () => {
     }
   };
 
-  const joinMeeting = (appointment) => {
+  const joinMeeting = async (appointment) => {
     const user = JSON.parse(localStorage.getItem('user'));
     const doctorName = `${user.prenom} ${user.nom}`;
     const patientName = `${appointment.patientId.prenom} ${appointment.patientId.nom}`;
-    const roomName = `Meeting-${appointment._id}-${appointment.date}-${appointment.time}`.replace(/\s+/g, '-');
+    const roomName = `Meeting-${appointment._id.slice(-8)}`;
 
+    console.log('Generated roomName:', roomName);
+
+    // Send the meeting link to the patient via the backend
+    const token = localStorage.getItem('token');
+    try {
+      await axios.post(
+        `http://localhost:5000/api/appointments/${appointment._id}/send-meeting-link`,
+        { roomName },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      console.log('Meeting link sent to patient successfully');
+    } catch (error) {
+      console.error('Error sending meeting link to patient:', error.response?.data?.message || error.message);
+      Swal.fire({
+        icon: 'error',
+        title: 'Erreur',
+        text: 'Échec de l’envoi du lien de réunion au patient.',
+        toast: true,
+        position: 'top-end',
+        timer: 3000,
+        timerProgressBar: true,
+      });
+      return;
+    }
+
+    // Navigate to the meeting
     navigate('/meeting', {
       state: {
         userName: doctorName,
