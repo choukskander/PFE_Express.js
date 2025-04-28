@@ -5,6 +5,7 @@ import Navbar from './Navbar';
 import Footer from './Footer';
 import Swal from 'sweetalert2';
 import { useNavigate } from 'react-router-dom';
+import Chatbot from './Chatbot';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
@@ -17,7 +18,6 @@ const Home = () => {
     { value: '', label: 'Sélectionner une spécialité' },
   ]);
 
-  // Charger les spécialités dynamiquement depuis le backend
   useEffect(() => {
     const fetchSpecialites = async () => {
       try {
@@ -79,7 +79,6 @@ const Home = () => {
   const handleSearch = async (e) => {
     e.preventDefault();
 
-    // Vérifier si l'utilisateur est connecté
     const storedUser = localStorage.getItem('user');
     if (!storedUser) {
       Swal.fire({
@@ -99,7 +98,6 @@ const Home = () => {
       return;
     }
 
-    // Valider la requête de recherche
     const error = validateQuery();
     if (error) {
       console.log('Home - Erreur de validation:', error, { nom, specialite, ville: searchQuery });
@@ -119,7 +117,6 @@ const Home = () => {
     const cleanedNom = nom.trim();
     console.log('Home - Redirection avec:', { nom: cleanedNom, specialite, ville: cleanedQuery });
 
-    // Construire les paramètres de l'URL
     const queryParams = new URLSearchParams();
     if (cleanedNom) queryParams.append('nom', cleanedNom);
     if (specialite) queryParams.append('specialite', specialite);
@@ -186,7 +183,6 @@ const Home = () => {
                           </option>
                         ))}
                       </select>
-                      
                     </div>
                   </div>
                   <div className="flex-1">
@@ -237,8 +233,7 @@ const Home = () => {
                 </div>
                 <h3 className="text-xl font-semibold text-gray-900 mb-3">Espace Patients</h3>
                 <p className="text-gray-600">
-                  Accédez à vos diagnostics, consultez votre historique médical et trouvez un spécialiste près de chez
-                  vous.
+                  Accédez à vos diagnostics, consultez votre historique médical et trouvez un spécialiste près de chez vous.
                 </p>
               </div>
               <div className="bg-white p-6 rounded-lg shadow-lg">
@@ -265,6 +260,8 @@ const Home = () => {
         </section>
       </main>
       <Footer />
+      {/* Add the Chatbot component */}
+      <Chatbot />
     </div>
   );
 };

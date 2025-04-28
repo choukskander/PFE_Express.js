@@ -18,6 +18,7 @@ import DoctorAppointments from './pages/DoctorAppointments';
 import PatientAppointments from './pages/PatientAppointments';
 import AdminDashboard from './components/AdminDashboard';
 import '@fortawesome/fontawesome-free/css/all.min.css';
+import 'antd/dist/reset.css';
 
 // Composant pour route protégée selon le rôle
 const RoleProtectedRoute = ({ children, allowedRoles }) => {

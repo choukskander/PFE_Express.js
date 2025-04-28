@@ -1,0 +1,88 @@
+.custumer_chatbot_icon_button {
+  cursor: pointer;
+  display: block;
+  position: fixed !important;
+  bottom: 0;
+  right: 0;
+  margin: 20px;
+  z-index: 50;
+}
+
+.cusumer_img {
+  width: 11%;
+  border-radius: 45%;
+}
+
+.center {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+}
+
+.gemini-container {
+  padding: 10px;
+}
+
+.gemini-card {
+  background-color: #f9f9f9;
+  padding: 15px;
+  border-radius: 8px;
+}
+
+.text-input {
+  width: 100%;
+  padding: 8px;
+  border-radius: 4px;
+  margin-bottom: 5px;
+}
+
+.pro-button {
+  background-color: #007bff;
+  color: #fff;
+  padding: 8px 16px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.pro-button:hover {
+  background-color: #0056b3;
+}
+
+.response-container {
+  margin-top: 1rem; /* Reduced from 1.5rem */
+  border-top: 1px solid #f0f0f0;
+  padding-top: 1rem; /* Reduced from 1.5rem */
+}
+
+.diagnosis-result {
+  font-size: 0.9rem; /* Slightly smaller font size */
+  line-height: 1.4; /* Tighter line spacing */
+  margin: 0 0 0.5rem 0; /* Reduced margin */
+  padding: 8px; /* Reduced padding */
+  background: #f9f9f9;
+  border: 1px solid #eee;
+  border-radius: 4px;
+  max-height: 150px; /* Reduced height to save space */
+  overflow-y: auto; /* Scroll if content overflows */
+  white-space: pre-wrap; /* Ensure text wraps properly */
+}
+
+.warning-text {
+  font-size: 0.85rem; /* Small font size for warning */
+  color: #D8000C; /* Red color for emphasis */
+  background: #FFD2D2; /* Light red background */
+  border: 1px solid #D8000C; /* Red border */
+  padding: 6px; /* Reduced padding */
+  border-radius: 4px;
+  margin: 0; /* No extra margin to save space */
+  font-weight: 500; /* Slightly less bold for elegance */
+  text-align: center; /* Centered for better aesthetics */
+}
+
+@media (max-width: 768px) {
+  .cusumer_img {
+    width: 23%;
+  }
+}
