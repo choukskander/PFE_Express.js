@@ -33,6 +33,20 @@ mongoose
 // Routes
 app.use("/api/auth", require("./routes/authRoutes"));
 app.use("/api/appointments", require("./routes/appointmentRoutes"));
+app.get('/test-email', async (req, res) => {
+  try {
+    const sendEmail = require('./utils/sendEmail');
+    await sendEmail({
+      to: 'choukskander1@gmail.com',
+      subject: 'Test Email',
+      text: 'This is a test email from your app!',
+      html: '<p>This is a test email from your app!</p>',
+    });
+    res.status(200).json({ message: 'Test email sent successfully' });
+  } catch (error) {
+    res.status(500).json({ message: 'Failed to send test email', error: error.message });
+  }
+});
 
 app.get("/", (req, res) => {
   res.send("Bienvenue sur la plateforme de prise de rendez-vous médicaux !");

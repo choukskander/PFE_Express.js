@@ -7,6 +7,7 @@ const {
   cancelAppointment,
   updateAppointmentStatus,
   getAllAppointments, 
+  sendMeetingLink,
 } = require('../controllers/appointmentController');
 const authMiddleware = require('../middleware/authMiddleware');
 
@@ -24,6 +25,7 @@ router.put('/cancel/:appointmentId', authMiddleware, cancelAppointment);
 
 // Route pour modifier le statut d’un rendez-vous
 router.put('/:appointmentId/status', authMiddleware, updateAppointmentStatus);
+router.post('/:appointmentId/send-meeting-link', authMiddleware, sendMeetingLink);
 
 // Route pour récupérer tous les rendez-vous (admins uniquement)
 router.get('/', authMiddleware, getAllAppointments);
