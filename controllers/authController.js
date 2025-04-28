@@ -4,6 +4,7 @@ const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
 const cloudinary = require('cloudinary').v2;
 const asyncHandler = require('express-async-handler');
+const sendEmail = require('../utils/sendEmail'); 
 
 const path = require('path');
 const fs = require('fs');
@@ -595,24 +596,76 @@ exports.deleteUser = asyncHandler(async (req, res) => {
 });
 
 // Valider la licence d’un médecin (pour admin uniquement)
+// exports.validateDoctorLicense = asyncHandler(async (req, res) => {
+//   const { userId } = req.params;
+//   console.log('Admin validating doctor license for userId:', userId);
+
+//   const user = await User.findById(userId);
+//   if (!user) {
+//     console.log('User not found for ID:', userId);
+//     return res.status(404).json({ message: 'Utilisateur non trouvé.' });
+//   }
+
+//   if (user.role !== 'internaute') {
+//     console.log('User is not a doctor. Role:', user.role);
+//     return res.status(400).json({ message: 'Cet utilisateur n’est pas un médecin.' });
+//   }
+
+//   user.validated = true;
+//   user.updatedAt = Date.now();
+//   await user.save();
+
+//   console.log('Doctor license validated:', user);
+//   res.status(200).json({ message: 'Licence du médecin validée avec succès.', user });
+// });
+
+// Valider la licence d’un médecin (pour admin uniquement)
 exports.validateDoctorLicense = asyncHandler(async (req, res) => {
   const { userId } = req.params;
   console.log('Admin validating doctor license for userId:', userId);
 
+  // Find the user (doctor)
   const user = await User.findById(userId);
   if (!user) {
     console.log('User not found for ID:', userId);
     return res.status(404).json({ message: 'Utilisateur non trouvé.' });
   }
 
+  // Verify that the user is a doctor (role: 'internaute')
   if (user.role !== 'internaute') {
     console.log('User is not a doctor. Role:', user.role);
     return res.status(400).json({ message: 'Cet utilisateur n’est pas un médecin.' });
   }
 
+  // Update the validated status
   user.validated = true;
   user.updatedAt = Date.now();
   await user.save();
+
+  // Send an email to the doctor
+  const doctorEmail = user.email;
+  const doctorName = `${user.prenom} ${user.nom}`;
+  const subject = 'Validation de votre compte médecin';
+  const text = `Bonjour Dr. ${doctorName},\n\nVotre compte sur la plateforme Rdv-Med a été validé avec succès par l'administrateur.\nVous pouvez maintenant commencer à accepter des rendez-vous.\n\nCordialement,\nL'équipe de Rdv-Med`;
+  const html = `
+    <h2>Bonjour Dr. ${doctorName},</h2>
+    <p>Votre compte sur la plateforme <strong>Rdv-Med</strong> a été validé avec succès par l'administrateur.</p>
+    <p>Vous pouvez maintenant commencer à accepter des rendez-vous.</p>
+    <p>Cordialement,<br>L'équipe de Rdv-Med</p>
+  `;
+
+  try {
+    await sendEmail({
+      to: doctorEmail,
+      subject,
+      text,
+      html,
+    });
+    console.log(`Validation email sent to ${doctorEmail}`);
+  } catch (error) {
+    console.error(`Failed to send validation email to ${doctorEmail}:`, error);
+    // Note: We don't fail the request if the email fails; we just log the error
+  }
 
   console.log('Doctor license validated:', user);
   res.status(200).json({ message: 'Licence du médecin validée avec succès.', user });

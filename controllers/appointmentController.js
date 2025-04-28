@@ -113,47 +113,6 @@ exports.cancelAppointment = asyncHandler(async (req, res) => {
   res.json({ message: 'Rendez-vous annulé avec succès.' });
 });
 
-// Mettre à jour le statut d’un rendez-vous
-// exports.updateAppointmentStatus = asyncHandler(async (req, res) => {
-//   const { appointmentId } = req.params;
-//   const { status } = req.body;
-//   const doctorId = req.user.id; // ID du médecin authentifié
-
-//   console.log('Doctor updating appointment status:', { appointmentId, status, doctorId });
-
-//   // Vérifier que l'utilisateur est un médecin (rôle: 'internaute')
-//   if (req.user.role !== 'internaute') {
-//     console.log('Access denied. User role:', req.user.role);
-//     return res.status(403).json({ message: 'Accès refusé. Seuls les médecins peuvent modifier les rendez-vous.' });
-//   }
-
-//   // Vérifier que le statut est valide
-//   if (!['pending', 'confirmed', 'cancelled'].includes(status)) {
-//     console.log('Invalid status:', status);
-//     return res.status(400).json({ message: 'Statut invalide. Les valeurs possibles sont : pending, confirmed, cancelled.' });
-//   }
-
-//   // Rechercher le rendez-vous
-//   const appointment = await Appointment.findById(appointmentId);
-//   if (!appointment) {
-//     console.log('Appointment not found for ID:', appointmentId);
-//     return res.status(404).json({ message: 'Rendez-vous non trouvé.' });
-//   }
-
-//   // Vérifier que le rendez-vous appartient au médecin authentifié
-//   if (appointment.doctorId.toString() !== doctorId) {
-//     console.log('Appointment does not belong to doctor:', { appointmentDoctorId: appointment.doctorId, doctorId });
-//     return res.status(403).json({ message: 'Accès refusé. Vous ne pouvez modifier que vos propres rendez-vous.' });
-//   }
-
-//   // Mettre à jour le statut
-//   appointment.status = status;
-//   await appointment.save();
-
-//   console.log('Appointment status updated:', appointment);
-//   res.status(200).json({ message: 'Statut du rendez-vous mis à jour avec succès.', appointment });
-// });
-
 
 // Mettre à jour le statut d’un rendez-vous
 exports.updateAppointmentStatus = asyncHandler(async (req, res) => {
