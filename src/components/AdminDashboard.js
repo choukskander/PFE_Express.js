@@ -6,7 +6,6 @@ import { Card, Button, Row, Col, Badge, Nav, Table } from 'react-bootstrap';
 import { FaUserMd, FaUsers, FaUserShield, FaSignOutAlt, FaChevronLeft, FaChevronRight, FaCalendarAlt } from 'react-icons/fa';
 import { Chart as ChartJS, BarElement, CategoryScale, LinearScale, Title, Tooltip, Legend, ArcElement } from 'chart.js';
 import { Bar, Pie } from 'react-chartjs-2';
-//import Papa from 'papaparse';
 import { jsPDF } from 'jspdf';
 import 'jspdf-autotable';
 // Register Chart.js components
@@ -150,7 +149,7 @@ const AdminDashboard = () => {
   const calculateAppointmentsByStatusPerMonth = () => {
     const months = [];
     const monthLabels = [];
-    const now = new Date(); // Current date: April 24, 2025
+    const now = new Date(); // Current date: April 28, 2025
     const endMonth = now.getMonth(); // 3 (April)
     const endYear = now.getFullYear(); // 2025
 
@@ -331,51 +330,50 @@ const AdminDashboard = () => {
     showNotification('Export CSV réussi');
   };
 
-  
-// Export to PDF
-const exportToPDF = () => {
-  try {
-    // Create a new jsPDF instance
-    const doc = new jsPDF();
+  // Export to PDF
+  const exportToPDF = () => {
+    try {
+      // Create a new jsPDF instance
+      const doc = new jsPDF();
 
-    // Set the title
-    doc.setFontSize(18);
-    doc.text('Liste des Utilisateurs', 14, 20);
+      // Set the title
+      doc.setFontSize(18);
+      doc.text('Liste des Utilisateurs', 14, 20);
 
-    // Prepare table data
-    const tableData = filteredUsers.map(user => [
-      user.name,
-      user.email,
-      user.type,
-      user.date,
-      user.status,
-    ]);
+      // Prepare table data
+      const tableData = filteredUsers.map(user => [
+        user.name,
+        user.email,
+        user.type,
+        user.date,
+        user.status,
+      ]);
 
-    // Use autoTable to create the table
-    doc.autoTable({
-      head: [['Utilisateur', 'Email', 'Type', 'Date d\'inscription', 'Statut']],
-      body: tableData,
-      startY: 30,
-      theme: 'striped',
-      headStyles: { fillColor: [13, 110, 253] },
-    });
+      // Use autoTable to create the table
+      doc.autoTable({
+        head: [['Utilisateur', 'Email', 'Type', 'Date d\'inscription', 'Statut']],
+        body: tableData,
+        startY: 30,
+        theme: 'striped',
+        headStyles: { fillColor: [13, 110, 253] },
+      });
 
-    // Save the PDF
-    doc.save('utilisateurs.pdf');
-    showNotification('Export PDF réussi');
-  } catch (error) {
-    console.error('Error generating PDF:', error);
-    Swal.fire({
-      icon: 'error',
-      title: 'Erreur',
-      text: 'Une erreur s\'est produite lors de la génération du PDF.',
-      toast: true,
-      position: 'top-end',
-      timer: 3000,
-      timerProgressBar: true,
-    });
-  }
-};
+      // Save the PDF
+      doc.save('utilisateurs.pdf');
+      showNotification('Export PDF réussi');
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      Swal.fire({
+        icon: 'error',
+        title: 'Erreur',
+        text: 'Une erreur s\'est produite lors de la génération du PDF.',
+        toast: true,
+        position: 'top-end',
+        timer: 3000,
+        timerProgressBar: true,
+      });
+    }
+  };
 
   // Functions
   const handleDeleteUser = async (userId) => {
@@ -413,18 +411,20 @@ const exportToPDF = () => {
   const handleValidateDoctor = async (userId) => {
     const token = localStorage.getItem('token');
     try {
-      await axios.put(
+      const response = await axios.put(
         `http://localhost:5000/api/auth/users/${userId}/validate`,
         {},
         { headers: { Authorization: `Bearer ${token}` } }
       );
+      console.log('Doctor validation response:', response.data);
       setUsers(
         users.map((user) =>
           user._id === userId ? { ...user, validated: true } : user
         )
       );
-      showNotification('Licence du médecin validée avec succès');
+      showNotification('Licence du médecin validée avec succès. Un email a été envoyé au médecin.');
     } catch (err) {
+      console.error('Error validating doctor:', err.response?.data?.message || err.message);
       Swal.fire({
         icon: 'error',
         title: 'Erreur',
