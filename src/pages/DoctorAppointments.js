@@ -147,7 +147,6 @@ const DoctorAppointments = () => {
 
     console.log('Generated roomName:', roomName);
 
-    // Send the meeting link to the patient via the backend
     const token = localStorage.getItem('token');
     try {
       await axios.post(
@@ -170,7 +169,6 @@ const DoctorAppointments = () => {
       return;
     }
 
-    // Navigate to the meeting
     navigate('/meeting', {
       state: {
         userName: doctorName,
@@ -185,9 +183,11 @@ const DoctorAppointments = () => {
       <Navbar />
       <main className="pt-24 px-4 sm:px-6 lg:px-8">
         <div className="max-w-6xl mx-auto">
-          <h2 className="text-3xl font-bold text-blue-600 mb-8 text-center">
-            Mes Rendez-vous
-          </h2>
+          <div className="flex justify-between items-center mb-8">
+            <h2 className="text-3xl font-bold text-blue-600">
+              Mes Rendez-vous
+            </h2>
+          </div>
 
           {isLoading && (
             <div className="flex justify-center items-center">
@@ -229,84 +229,73 @@ const DoctorAppointments = () => {
 
           {!isLoading && !error && appointments.length > 0 && (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {appointments.map((appt) => {
-                console.log(`Appointment ${appt._id} status:`, appt.status);
-                console.log(
-                  `Status length for ${appt._id}:`,
-                  appt.status ? appt.status.length : 'undefined'
-                );
-                console.log(
-                  `Condition result for ${appt._id}:`,
-                  (appt.status || '').toLowerCase() === 'confirmed'
-                );
-                return (
-                  <div
-                    key={appt._id}
-                    className="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl transition-shadow duration-300"
-                  >
-                    <div className="flex items-center mb-4">
-                      <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center">
-                        <svg
-                          className="w-6 h-6 text-blue-600"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                          xmlns="http://www.w3.org/2000/svg"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth="2"
-                            d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-                          />
-                        </svg>
-                      </div>
-                      <h3 className="ml-4 text-lg font-semibold text-gray-800">
-                        {appt.patientId.nom} {appt.patientId.prenom}
-                      </h3>
+              {appointments.map((appt) => (
+                <div
+                  key={appt._id}
+                  className="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl transition-shadow duration-300"
+                >
+                  <div className="flex items-center mb-4">
+                    <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center">
+                      <svg
+                        className="w-6 h-6 text-blue-600"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth="2"
+                          d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                        />
+                      </svg>
                     </div>
-                    <div className="space-y-2">
-                      <p className="text-gray-600">
-                        <span className="font-medium">Email:</span>{' '}
-                        {appt.patientId.email}
-                      </p>
-                      <p className="text-gray-600">
-                        <span className="font-medium">Date:</span> {appt.date}
-                      </p>
-                      <p className="text-gray-600">
-                        <span className="font-medium">Heure:</span> {appt.time}
-                      </p>
-                      <p className="text-gray-600">
-                        <span className="font-medium">Jour:</span> {appt.day}
-                      </p>
-                      <div className="flex items-center space-x-2">
-                        <span className="font-medium text-gray-600">Statut:</span>
-                        <select
-                          value={appt.status}
-                          onChange={(e) => handleStatusChange(appt._id, e.target.value)}
-                          className="border border-gray-300 rounded-lg px-2 py-1 text-sm focus:ring-blue-500 focus:border-blue-500"
-                        >
-                          <option value="pending">En attente</option>
-                          <option value="confirmed">Confirmé</option>
-                          <option value="cancelled">Annulé</option>
-                        </select>
-                      </div>
-                      {(appt.status || '').trim().toLowerCase() === 'confirmed' ? (
-                        <button
-                          onClick={() => joinMeeting(appt)}
-                          className="mt-4 w-full bg-green-600 text-white py-2 rounded-lg font-semibold hover:bg-green-700 transition-colors"
-                        >
-                          Rejoindre la réunion
-                        </button>
-                      ) : (
-                        <p className="mt-4 text-gray-600">
-                          Statut non confirmé (actuel: {appt.status})
-                        </p>
-                      )}
-                    </div>
+                    <h3 className="ml-4 text-lg font-semibold text-gray-800">
+                      {appt.patientId.nom} {appt.patientId.prenom}
+                    </h3>
                   </div>
-                );
-              })}
+                  <div className="space-y-2">
+                    <p className="text-gray-600">
+                      <span className="font-medium">Email:</span>{' '}
+                      {appt.patientId.email}
+                    </p>
+                    <p className="text-gray-600">
+                      <span className="font-medium">Date:</span> {appt.date}
+                    </p>
+                    <p className="text-gray-600">
+                      <span className="font-medium">Heure:</span> {appt.time}
+                    </p>
+                    <p className="text-gray-600">
+                      <span className="font-medium">Jour:</span> {appt.day}
+                    </p>
+                    <div className="flex items-center space-x-2">
+                      <span className="font-medium text-gray-600">Statut:</span>
+                      <select
+                        value={appt.status}
+                        onChange={(e) => handleStatusChange(appt._id, e.target.value)}
+                        className="border border-gray-300 rounded-lg px-2 py-1 text-sm focus:ring-blue-500 focus:border-blue-500"
+                      >
+                        <option value="pending">En attente</option>
+                        <option value="confirmed">Confirmé</option>
+                        <option value="cancelled">Annulé</option>
+                      </select>
+                    </div>
+                    {(appt.status || '').trim().toLowerCase() === 'confirmed' ? (
+                      <button
+                        onClick={() => joinMeeting(appt)}
+                        className="mt-4 w-full bg-green-600 text-white py-2 rounded-lg font-semibold hover:bg-green-700 transition-colors"
+                      >
+                        Rejoindre la réunion
+                      </button>
+                    ) : (
+                      <p className="mt-4 text-gray-600">
+                        Statut non confirmé (actuel: {appt.status})
+                      </p>
+                    )}
+                  </div>
+                </div>
+              ))}
             </div>
           )}
         </div>

@@ -18,6 +18,7 @@ import DoctorAppointments from './pages/DoctorAppointments';
 import PatientAppointments from './pages/PatientAppointments';
 import MeetingPage from './pages/Meeting';
 import AdminDashboard from './components/AdminDashboard';
+import ErrorPage from './pages/error.jsx';
 import '@fortawesome/fontawesome-free/css/all.min.css';
 import 'antd/dist/reset.css';
 
@@ -58,7 +59,7 @@ function App() {
           <Route path="/admin-dashboard" element={<AdminDashboard />} /> 
 
           {/* ✅ 404 fallback */}
-          <Route path="*" element={<h1>404 - Page non trouvée</h1>} />
+          <Route path="*" element={<ErrorPage />} />
         </Routes>
       </Router>
     </UserProvider>

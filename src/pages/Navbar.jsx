@@ -1,14 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import Swal from 'sweetalert2';
+import axios from 'axios';
 
 const Navbar = () => {
   const [user, setUser] = useState(null);
   const [isUserDropdownOpen, setIsUserDropdownOpen] = useState(false);
   const [isDoctorDropdownOpen, setIsDoctorDropdownOpen] = useState(false);
   const [isPatientDropdownOpen, setIsPatientDropdownOpen] = useState(false);
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+  const [notifications, setNotifications] = useState([]);
   const navigate = useNavigate();
- 
+
   // Load user from localStorage on mount
   useEffect(() => {
     const storedUser = localStorage.getItem('user');
@@ -17,11 +20,154 @@ const Navbar = () => {
     }
   }, []);
 
+  // Fetch notifications for doctor
+  const fetchNotifications = async () => {
+    const token = localStorage.getItem('token');
+    console.log('Fetching notifications with token:', token);
+    if (!token || !user || user.role !== 'internaute') {
+      console.log('No token or user is not a doctor - skipping fetch');
+      if (!token) {
+        console.log('Token missing - redirecting to login');
+        localStorage.clear();
+        navigate('/login');
+        const Toast = Swal.mixin({
+          toast: true,
+          position: 'top-end',
+          showConfirmButton: false,
+          timer: 3000,
+          timerProgressBar: true,
+          didOpen: (toast) => {
+            toast.onmouseenter = Swal.stopTimer;
+            toast.onmouseleave = Swal.resumeTimer;
+          },
+        });
+        Toast.fire({
+          icon: 'warning',
+          title: 'Session expirée',
+          text: 'Votre session a expiré. Veuillez vous reconnecter.',
+        });
+      }
+      return;
+    }
+    try {
+      const response = await axios.get('http://localhost:5000/api/notifications', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      console.log('Notifications fetched in Navbar:', response.data);
+      setNotifications(response.data || []);
+    } catch (err) {
+      console.error('Erreur lors de la récupération des notifications dans Navbar:', err);
+      console.log('Error response:', err.response?.data);
+      if (err.response?.status === 401) {
+        console.log('Unauthorized - redirecting to login');
+        localStorage.clear();
+        navigate('/login');
+        const Toast = Swal.mixin({
+          toast: true,
+          position: 'top-end',
+          showConfirmButton: false,
+          timer: 3000,
+          timerProgressBar: true,
+          didOpen: (toast) => {
+            toast.onmouseenter = Swal.stopTimer;
+            toast.onmouseleave = Swal.resumeTimer;
+          },
+        });
+        Toast.fire({
+          icon: 'warning',
+          title: 'Session expirée',
+          text: 'Votre session a expirée. Veuillez vous reconnecter.',
+        });
+      }
+    }
+  };
+
+  const markAsRead = async (notificationId) => {
+    const token = localStorage.getItem('token');
+    console.log('Marking notification as read:', notificationId);
+    try {
+      await axios.put(
+        `http://localhost:5000/api/notifications/${notificationId}/read`,
+        {},
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      setNotifications(
+        notifications.map((notif) =>
+          notif._id === notificationId ? { ...notif, read: true } : notif
+        )
+      );
+      const Toast = Swal.mixin({
+        toast: true,
+        position: 'top-end',
+        showConfirmButton: false,
+        timer: 2000,
+        timerProgressBar: true,
+        didOpen: (toast) => {
+          toast.onmouseenter = Swal.stopTimer;
+          toast.onmouseleave = Swal.resumeTimer;
+        },
+      });
+      Toast.fire({
+        icon: 'success',
+        title: 'Notification marquée comme lue',
+      });
+    } catch (err) {
+      console.error('Erreur lors de la mise à jour de la notification:', err);
+      const Toast = Swal.mixin({
+        toast: true,
+        position: 'top-end',
+        showConfirmButton: false,
+        timer: 3000,
+        timerProgressBar: true,
+        didOpen: (toast) => {
+          toast.onmouseenter = Swal.stopTimer;
+          toast.onmouseleave = Swal.resumeTimer;
+        },
+      });
+      Toast.fire({
+        icon: 'error',
+        title: 'Erreur',
+        text: 'Impossible de marquer la notification comme lue.',
+      });
+    }
+  };
+
+  useEffect(() => {
+    const handleStorageChange = () => {
+      const updatedUser = JSON.parse(localStorage.getItem('user') || '{}');
+      console.log('User updated from storage change:', updatedUser);
+      if (updatedUser && updatedUser.role === 'internaute') {
+        fetchNotifications();
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+
+    if (user && user.role === 'internaute') {
+      console.log('useEffect running - fetching notifications for user:', user._id);
+      fetchNotifications();
+      const interval = setInterval(() => {
+        fetchNotifications();
+      }, 30000);
+      return () => {
+        clearInterval(interval);
+        window.removeEventListener('storage', handleStorageChange);
+      };
+    } else {
+      console.log('User is not a doctor or not logged in:', user);
+    }
+  }, [user, navigate]);
+
+  useEffect(() => {
+    console.log('Notifications state in Navbar:', notifications);
+    console.log('Unread count:', unreadCount);
+  }, [notifications]);
+
   // Handle logout
   const handleLogout = () => {
     localStorage.removeItem('user');
     setUser(null);
-    setIsUserDropdownOpen(false); // Close dropdown on logout
+    setIsUserDropdownOpen(false);
     const Toast = Swal.mixin({
       toast: true,
       position: 'top-end',
@@ -43,20 +189,48 @@ const Navbar = () => {
   // Toggle dropdowns
   const toggleUserDropdown = () => {
     setIsUserDropdownOpen(!isUserDropdownOpen);
-    setIsDoctorDropdownOpen(false); // Close other dropdowns
+    setIsDoctorDropdownOpen(false);
     setIsPatientDropdownOpen(false);
+    setIsNotificationsOpen(false);
   };
 
   const toggleDoctorDropdown = () => {
     setIsDoctorDropdownOpen(!isDoctorDropdownOpen);
     setIsUserDropdownOpen(false);
     setIsPatientDropdownOpen(false);
+    setIsNotificationsOpen(false);
   };
 
   const togglePatientDropdown = () => {
     setIsPatientDropdownOpen(!isPatientDropdownOpen);
     setIsUserDropdownOpen(false);
     setIsDoctorDropdownOpen(false);
+    setIsNotificationsOpen(false);
+  };
+
+  const toggleNotifications = () => {
+    setIsNotificationsOpen(!isNotificationsOpen);
+    setIsUserDropdownOpen(false);
+    setIsDoctorDropdownOpen(false);
+    setIsPatientDropdownOpen(false);
+    if (notifications.length === 0) {
+      const Toast = Swal.mixin({
+        toast: true,
+        position: 'top-end',
+        showConfirmButton: false,
+        timer: 2000,
+        timerProgressBar: true,
+        didOpen: (toast) => {
+          toast.onmouseenter = Swal.stopTimer;
+          toast.onmouseleave = Swal.resumeTimer;
+        },
+      });
+      Toast.fire({
+        icon: 'info',
+        title: 'Aucune notification',
+        text: 'Vous n’avez aucune notification pour le moment.',
+      });
+    }
   };
 
   // Close dropdown when clicking a link
@@ -64,7 +238,10 @@ const Navbar = () => {
     setIsUserDropdownOpen(false);
     setIsDoctorDropdownOpen(false);
     setIsPatientDropdownOpen(false);
+    setIsNotificationsOpen(false);
   };
+
+  const unreadCount = notifications.filter((notif) => !notif.read).length;
 
   return (
     <>
@@ -88,6 +265,12 @@ const Navbar = () => {
           .dropdown-content.open {
             display: block;
           }
+
+          .bell {
+            width: 20px;
+            height: 20px;
+            fill: currentColor;
+          }
         `}
       </style>
 
@@ -101,12 +284,12 @@ const Navbar = () => {
             </div>
 
             <nav className="hidden md:flex space-x-8">
-            <Link
-              to="/"
-             className="no-underline hover:no-underline focus:no-underline text-gray-700 hover:text-primary px-3 py-2 rounded-md text-sm font-medium"
-            >
-             Accueil
-            </Link>
+              <Link
+                to="/"
+                className="no-underline hover:no-underline focus:no-underline text-gray-700 hover:text-primary px-3 py-2 rounded-md text-sm font-medium"
+              >
+                Accueil
+              </Link>
 
               <div className="dropdown relative">
                 <button
@@ -131,11 +314,23 @@ const Navbar = () => {
                     Partage de Dossiers
                   </Link>
                   {user && user.role === 'internaute' && (
-            <Link to="/my-appointments/doctor" className="no-underline block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Mes Rendez-vous</Link>
-          )}
+                    <Link
+                      to="/my-appointments/doctor"
+                      onClick={handleLinkClick}
+                      className="no-underline block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                    >
+                      Mes Rendez-vous
+                    </Link>
+                  )}
                   {user && user.role === 'internaute' && (
-            <Link to="/doctor-schedule" className="no-underline block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Gérer mes horaires</Link>
-          )}
+                    <Link
+                      to="/doctor-schedule"
+                      onClick={handleLinkClick}
+                      className="no-underline block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                    >
+                      Gérer mes horaires
+                    </Link>
+                  )}
                 </div>
               </div>
 
@@ -162,63 +357,158 @@ const Navbar = () => {
                     Historique
                   </Link>
                   {user && user.role === 'patient' && (
-  <Link to="/my-appointments/patient" className="no-underline block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
-    Mes Rendez-vous
-  </Link>
-)}
-
-{user && user.role === 'patient' && (
-  <Link to="/search-doctors" className="no-underline block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
-    Rechercher des Médecins
-  </Link>
-)}
-                </div>
-              </div>
-            </nav>
-
-            <div className="flex items-center space-x-4">
-              {user ? (
-                <div className="dropdown relative">
-                  <button
-                    onClick={toggleUserDropdown}
-                    className="text-gray-700 hover:text-primary px-3 py-2 rounded-md text-sm font-medium flex items-center"
-                  >
-                    {user.prenom} {user.nom} <i className="ri-arrow-down-s-line ml-1"></i>
-                  </button>
-                  <div className={`dropdown-content rounded-md mt-2 ${isUserDropdownOpen ? 'open' : ''}`}>
                     <Link
-                      to="/ProfileScreen"
+                      to="/my-appointments/patient"
                       onClick={handleLinkClick}
                       className="no-underline block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                     >
-                      Profil
+                      Mes Rendez-vous
                     </Link>
-                    <button
-                      onClick={() => {
-                        handleLogout();
-                        handleLinkClick();
-                      }}
-                      className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                  )}
+                  {user && user.role === 'patient' && (
+                    <Link
+                      to="/search-doctors"
+                      onClick={handleLinkClick}
+                      className="no-underline block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                     >
-                      Déconnexion
+                      Rechercher des Médecins
+                    </Link>
+                  )}
+                </div>
+              </div>
+            </nav>
+                  {/* Notifications Button - Above the doctor's name */}
+                  {user && user.role === 'internaute' && (
+                    <div className="relative mb-1">
+                      <button
+                        onClick={toggleNotifications}
+                        className="flex items-center text-gray-700 hover:text-primary px-3 py-1 rounded-md text-sm font-medium"
+                      >
+                        <svg className="bell w-5 h-5 mr-1" viewBox="0 0 448 512">
+                          <path d="M224 0c-17.7 0-32 14.3-32 32V51.2C119 66 64 120.6 64 192v71.7c0 62.6-25.3 122.3-70.6 166.6L0 448l448 0 6.6-17.7c-45.3-44.3-70.6-104-70.6-166.6V192c0-71.4-55-126-128-140.8V32c0-17.7-14.3-32-32-32zM224 512c35.3 0 64-28.7 64-64H160c0 35.3 28.7 64 64 64z" />
+                        </svg>
+                        Notifications
+                        {unreadCount > 0 ? (
+                          <span className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full px-2 py-1 text-xs">
+                            {unreadCount}
+                          </span>
+                        ) : (
+                          <span className="absolute -top-1 -right-1 bg-gray-500 text-white rounded-full px-2 py-1 text-xs">
+                            0
+                          </span>
+                        )}
+                        <i className={`ri-arrow-${isNotificationsOpen ? 'up' : 'down'}-s-line ml-1`}></i>
+                      </button>
+                      {isNotificationsOpen && (
+                        <div className="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-lg p-4 z-50 max-h-96 overflow-y-auto">
+                          <h3 className="text-lg font-semibold text-gray-800 mb-3">
+                            Notifications
+                          </h3>
+                          {notifications.length > 0 ? (
+                            notifications.map((notif) => (
+                              <div
+                                key={notif._id}
+                                className={`p-3 mb-2 rounded-lg ${
+                                  notif.read ? 'bg-gray-100' : 'bg-blue-50'
+                                } border-l-4 ${
+                                  notif.read ? 'border-gray-300' : 'border-blue-500'
+                                } flex justify-between items-center`}
+                              >
+                                <div>
+                                  <p className="text-sm text-gray-800">{notif.message}</p>
+                                  <p className="text-xs text-gray-500">
+                                    {new Date(notif.createdAt).toLocaleString('fr-FR')}
+                                  </p>
+                                </div>
+                                {!notif.read && (
+                                  <button
+                                    onClick={() => {
+                                      markAsRead(notif._id);
+                                      handleLinkClick();
+                                    }}
+                                    className="text-blue-600 hover:underline text-sm"
+                                  >
+                                    Marquer comme lu
+                                  </button>
+                                )}
+                              </div>
+                            ))
+                          ) : (
+                            <p className="text-sm text-gray-500">Aucune notification pour le moment.</p>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  {/* User Dropdown - Below the notifications button */}
+            <div className="flex items-center">
+              {user ? (
+                <div className="flex flex-col items-end">
+
+                  <div className="dropdown relative">
+                    <button
+                      onClick={toggleUserDropdown}
+                      className="text-gray-700 hover:text-primary px-3 py-2 rounded-md text-sm font-medium flex items-center"
+                    >
+                      {user.prenom} {user.nom} <i className="ri-arrow-down-s-line ml-1"></i>
                     </button>
+                    <div className={`dropdown-content rounded-md mt-2 ${isUserDropdownOpen ? 'open' : ''}`}>
+                      <Link
+                        to="/ProfileScreen"
+                        onClick={handleLinkClick}
+                        className="no-underline block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      >
+                        Profil
+                      </Link>
+                      <button
+                        onClick={() => {
+                          handleLogout();
+                          handleLinkClick();
+                        }}
+                        className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      >
+                        Déconnexion
+                      </button>
+                    </div>
                   </div>
                 </div>
               ) : (
-                <>
-                  <Link
-                    to="/login"
-                    className="no-underline bg-white text-primary border border-primary px-4 py-2 rounded-button text-sm font-medium hover:bg-primary hover:text-white transition-colors whitespace-nowrap"
-                  >
-                    Se connecter
-                  </Link>
-                  <Link
-                    to="/register"
-                    className="no-underline bg-primary text-white px-4 py-2 rounded-button text-sm font-medium hover:bg-blue-600 transition-colors whitespace-nowrap"
-                  >
-                    S'inscrire
-                  </Link>
-                </>
+                // <div className="flex items-center space-x-4">
+                //   <Link
+                //     to="/login"
+                //     className="no-underline bg-white text-primary border border-primary px-4 py-2 rounded-button text-sm font-medium hover:bg-primary hover:text-white transition-colors whitespace-nowrap"
+                //   >
+                //     Se connecter
+                //   </Link>
+                //   <Link
+                //     to="/register"
+                //     className="no-underline bg-primary text-white px-4 py-2 rounded-button text-sm font-medium hover:bg-blue-600 transition-colors whitespace-nowrap"
+                //   >
+                //     S'inscrire
+                //   </Link>
+                // </div>
+                   <ul className="nav flex-row align-items-center list-unstyled ms-xl-auto">
+                                {/* Sign In button */}
+                                <li className="nav-item ms-2 d-none d-sm-block">
+                                  <Link
+                                    to="/login"
+                                    className="btn btn-sm btn-success-soft mb-0"
+                                  >
+                                    <i className="fa-solid fa-right-to-bracket me-2" />
+                                    Sign in
+                                  </Link>
+                                </li>
+                                {/* Sign Up button */}
+                                <li className="nav-item ms-2 d-none d-sm-block">
+                                  <Link
+                                    to="/register"
+                                    className="btn btn-sm btn-primary-soft mb-0"
+                                  >
+                                    <i className="fa-solid fa-user-plus me-2" />
+                                    Sign Up
+                                  </Link>
+                                </li>
+                              </ul>
               )}
             </div>
           </div>

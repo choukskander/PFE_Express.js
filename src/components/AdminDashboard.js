@@ -2,12 +2,14 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import Swal from 'sweetalert2';
 import { useNavigate } from 'react-router-dom';
-import { Card, Button, Row, Col, Badge, Nav, Table } from 'react-bootstrap';
-import { FaUserMd, FaUsers, FaUserShield, FaSignOutAlt, FaChevronLeft, FaChevronRight, FaCalendarAlt } from 'react-icons/fa';
+import { Card, Button, Row, Col, Badge, Table, Dropdown } from 'react-bootstrap';
+import { FaSignOutAlt } from 'react-icons/fa';
 import { Chart as ChartJS, BarElement, CategoryScale, LinearScale, Title, Tooltip, Legend, ArcElement } from 'chart.js';
 import { Bar, Pie } from 'react-chartjs-2';
 import { jsPDF } from 'jspdf';
-import 'jspdf-autotable';
+import autoTable from 'jspdf-autotable'; // Import autoTable correctly
+import Sidebar from '../components/Sidebar';
+
 // Register Chart.js components
 ChartJS.register(BarElement, CategoryScale, LinearScale, Title, Tooltip, Legend, ArcElement);
 
@@ -21,7 +23,6 @@ const AdminDashboard = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('Tous');
   const [userTypeFilter, setUserTypeFilter] = useState('Tous');
-  const [dateFilter, setDateFilter] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
   const [showSuccessNotification, setShowSuccessNotification] = useState(false);
@@ -124,9 +125,8 @@ const AdminDashboard = () => {
       (statusFilter === 'Inactifs' && user.status === 'Inactif');
     const matchesType =
       userTypeFilter === 'Tous' || userTypeFilter === user.type;
-    const matchesDate = !dateFilter || user.date.includes(dateFilter);
 
-    return matchesSearch && matchesStatus && matchesType && matchesDate;
+    return matchesSearch && matchesStatus && matchesType;
   });
 
   // Filter doctors for validation status
@@ -149,7 +149,7 @@ const AdminDashboard = () => {
   const calculateAppointmentsByStatusPerMonth = () => {
     const months = [];
     const monthLabels = [];
-    const now = new Date(); // Current date: April 28, 2025
+    const now = new Date(); // Current date: April 30, 2025
     const endMonth = now.getMonth(); // 3 (April)
     const endYear = now.getFullYear(); // 2025
 
@@ -296,7 +296,6 @@ const AdminDashboard = () => {
 
   // Export to CSV
   const exportToCSV = () => {
-    // Ensure Papa Parse is available
     if (!window.Papa) {
       Swal.fire({
         icon: 'error',
@@ -314,7 +313,6 @@ const AdminDashboard = () => {
       Utilisateur: user.name,
       Email: user.email,
       Type: user.type,
-      'Date d\'inscription': user.date,
       Statut: user.status,
     }));
 
@@ -333,32 +331,23 @@ const AdminDashboard = () => {
   // Export to PDF
   const exportToPDF = () => {
     try {
-      // Create a new jsPDF instance
       const doc = new jsPDF();
-
-      // Set the title
+      // Apply the autoTable plugin to the jsPDF instance
       doc.setFontSize(18);
       doc.text('Liste des Utilisateurs', 14, 20);
-
-      // Prepare table data
       const tableData = filteredUsers.map(user => [
         user.name,
         user.email,
         user.type,
-        user.date,
         user.status,
       ]);
-
-      // Use autoTable to create the table
-      doc.autoTable({
-        head: [['Utilisateur', 'Email', 'Type', 'Date d\'inscription', 'Statut']],
+      autoTable(doc, { // Use autoTable directly
+        head: [['Utilisateur', 'Email', 'Type', 'Statut']],
         body: tableData,
         startY: 30,
         theme: 'striped',
         headStyles: { fillColor: [13, 110, 253] },
       });
-
-      // Save the PDF
       doc.save('utilisateurs.pdf');
       showNotification('Export PDF réussi');
     } catch (error) {
@@ -439,6 +428,8 @@ const AdminDashboard = () => {
 
   const handleLogout = () => {
     localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    localStorage.removeItem('userId');
     Swal.fire({
       icon: 'success',
       title: 'Déconnexion',
@@ -525,150 +516,18 @@ const AdminDashboard = () => {
 
   return (
     <div style={{ display: 'flex', minHeight: '100vh', backgroundColor: '#f8f9fa' }}>
-      {/* Sidebar */}
-      <div
-        style={{
-          width: sidebarOpen ? '250px' : '80px',
-          backgroundColor: '#0d6efd',
-          color: 'white',
-          transition: 'all 0.3s ease-in-out',
-          position: 'fixed',
-          height: '100vh',
-          zIndex: 10,
-        }}
-      >
-        <div className="p-4 d-flex justify-content-between align-items-center">
-          {sidebarOpen ? (
-            <h4 style={{ color: 'white', fontWeight: 'bold', margin: 0 }}>
-              Rdv-Med Admin
-            </h4>
-          ) : (
-            <h4 style={{ color: 'white', fontWeight: 'bold', margin: 0 }}>RMA</h4>
-          )}
-          <Button
-            variant="link"
-            onClick={() => setSidebarOpen(!sidebarOpen)}
-            style={{ color: 'white', padding: 0 }}
-          >
-            {sidebarOpen ? <FaChevronLeft /> : <FaChevronRight />}
-          </Button>
-        </div>
-        <Nav className="flex-column mt-4">
-          <Nav.Link
-            onClick={() => setActiveSection('dashboard')}
-            style={{
-              padding: '12px 20px',
-              display: 'flex',
-              alignItems: 'center',
-              backgroundColor: activeSection === 'dashboard' ? '#ffffff' : 'transparent',
-              color: activeSection === 'dashboard' ? '#0d6efd' : 'white',
-            }}
-          >
-            <i className="fas fa-tachometer-alt me-2"></i>
-            {sidebarOpen && <span>Tableau de bord</span>}
-          </Nav.Link>
-          <Nav.Link
-            onClick={() => setActiveSection('users')}
-            style={{
-              padding: '12px 20px',
-              display: 'flex',
-              alignItems: 'center',
-              backgroundColor: activeSection === 'users' ? '#ffffff' : 'transparent',
-              color: activeSection === 'users' ? '#0d6efd' : 'white',
-            }}
-          >
-            <i className="fas fa-users me-2"></i>
-            {sidebarOpen && <span>Gestion des utilisateurs</span>}
-          </Nav.Link>
-          <Nav.Link
-            onClick={() => setActiveSection('medecins')}
-            style={{
-              padding: '12px 20px',
-              display: 'flex',
-              alignItems: 'center',
-              backgroundColor: activeSection === 'medecins' ? '#ffffff' : 'transparent',
-              color: activeSection === 'medecins' ? '#0d6efd' : 'white',
-            }}
-          >
-            <FaUserMd className="me-2" />
-            {sidebarOpen && <span>Médecins</span>}
-            {sidebarOpen && (
-              <Badge bg="light" text="dark" className="ms-2">
-                {medecins.length}
-              </Badge>
-            )}
-          </Nav.Link>
-          <Nav.Link
-            onClick={() => setActiveSection('patients')}
-            style={{
-              padding: '12px 20px',
-              display: 'flex',
-              alignItems: 'center',
-              backgroundColor: activeSection === 'patients' ? '#ffffff' : 'transparent',
-              color: activeSection === 'patients' ? '#0d6efd' : 'white',
-            }}
-          >
-            <FaUsers className="me-2" />
-            {sidebarOpen && <span>Patients</span>}
-            {sidebarOpen && (
-              <Badge bg="light" text="dark" className="ms-2">
-                {patients.length}
-              </Badge>
-            )}
-          </Nav.Link>
-          <Nav.Link
-            onClick={() => setActiveSection('admins')}
-            style={{
-              padding: '12px 20px',
-              display: 'flex',
-              alignItems: 'center',
-              backgroundColor: activeSection === 'admins' ? '#ffffff' : 'transparent',
-              color: activeSection === 'admins' ? '#0d6efd' : 'white',
-            }}
-          >
-            <FaUserShield className="me-2" />
-            {sidebarOpen && <span>Admins</span>}
-            {sidebarOpen && (
-              <Badge bg="light" text="dark" className="ms-2">
-                {admins.length}
-              </Badge>
-            )}
-          </Nav.Link>
-          <Nav.Link
-            onClick={() => setActiveSection('appointments')}
-            style={{
-              padding: '12px 20px',
-              display: 'flex',
-              alignItems: 'center',
-              backgroundColor: activeSection === 'appointments' ? '#ffffff' : 'transparent',
-              color: activeSection === 'appointments' ? '#0d6efd' : 'white',
-            }}
-          >
-            <FaCalendarAlt className="me-2" />
-            {sidebarOpen && <span>Rendez-vous</span>}
-            {sidebarOpen && (
-              <Badge bg="light" text="dark" className="ms-2">
-                {appointments.length}
-              </Badge>
-            )}
-          </Nav.Link>
-          <Nav.Link
-            onClick={handleLogout}
-            style={{
-              padding: '12px 20px',
-              display: 'flex',
-              alignItems: 'center',
-              color: 'white',
-              position: 'absolute',
-              bottom: '20px',
-              width: sidebarOpen ? 'calc(100% - 40px)' : 'auto',
-            }}
-          >
-            <FaSignOutAlt className="me-2" />
-            {sidebarOpen && <span>Déconnexion</span>}
-          </Nav.Link>
-        </Nav>
-      </div>
+      {/* Sidebar Component */}
+      <Sidebar
+        sidebarOpen={sidebarOpen}
+        setSidebarOpen={setSidebarOpen}
+        activeSection={activeSection}
+        setActiveSection={setActiveSection}
+        medecins={medecins}
+        patients={patients}
+        admins={admins}
+        appointments={appointments}
+        handleLogout={handleLogout}
+      />
 
       {/* Main Content */}
       <div
@@ -717,9 +576,21 @@ const AdminDashboard = () => {
                   onError={(e) => (e.target.src = '/placeholder-profile-image.jpg')}
                 />
                 <span className="text-muted">Admin</span>
-                <Button variant="link" className="p-2">
-                  <i className="fas fa-chevron-down text-muted"></i>
-                </Button>
+                <Dropdown>
+                  <Dropdown.Toggle
+                    variant="link"
+                    className="p-2"
+                    style={{ color: '#6c757d', textDecoration: 'none' }}
+                  >
+                    <i className="fas fa-chevron-down text-muted"></i>
+                  </Dropdown.Toggle>
+                  <Dropdown.Menu align="end" className="dropdown-content">
+                    <Dropdown.Item onClick={handleLogout}>
+                      <FaSignOutAlt className="me-2" />
+                      Déconnexion
+                    </Dropdown.Item>
+                  </Dropdown.Menu>
+                </Dropdown>
               </div>
             </div>
           </div>
@@ -848,16 +719,6 @@ const AdminDashboard = () => {
                           <option value="Admin">Admin</option>
                         </select>
                       </div>
-                      <div className="mb-4">
-                        <label className="form-label">Date d'inscription</label>
-                        <input
-                          type="text"
-                          placeholder="JJ/MM/AAAA"
-                          className="form-control form-control-sm"
-                          value={dateFilter}
-                          onChange={(e) => setDateFilter(e.target.value)}
-                        />
-                      </div>
                       <div>
                         <label className="form-label">Exporter</label>
                         <div className="d-flex gap-2">
@@ -893,7 +754,6 @@ const AdminDashboard = () => {
                         <th>Utilisateur</th>
                         <th>Email</th>
                         <th>Type</th>
-                        <th>Date d'inscription</th>
                         <th>Statut</th>
                         <th>Actions</th>
                       </tr>
@@ -924,7 +784,6 @@ const AdminDashboard = () => {
                           </td>
                           <td>{user.email}</td>
                           <td>{user.type}</td>
-                          <td>{user.date}</td>
                           <td>
                             <Badge bg={user.status === 'Actif' ? 'success' : 'danger'}>
                               {user.status}

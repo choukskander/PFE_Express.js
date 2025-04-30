@@ -37,11 +37,11 @@ const Footer = () => {
               </li>
               <li className="flex items-center text-gray-400">
                 <i className="ri-phone-line mr-2"></i>
-                +33 1 23 45 67 89
+                +216 28 644 261
               </li>
               <li className="flex items-center text-gray-400">
                 <i className="ri-mail-line mr-2"></i>
-                contact@plateforme-medicale.tn
+                rdv.med2@gmail.com
               </li>
             </ul>
           </div>
