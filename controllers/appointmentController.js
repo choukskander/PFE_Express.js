@@ -2,6 +2,8 @@ const asyncHandler = require('express-async-handler');
 const Appointment = require('../models/Appointment');
 const User = require('../models/User');
 const sendEmail = require('../utils/sendEmail'); 
+const Notification = require('../models/Notification');
+
 
 // Créer un rendez-vous (pour les patients)
 exports.bookAppointment = asyncHandler(async (req, res) => {
@@ -45,6 +47,43 @@ exports.bookAppointment = asyncHandler(async (req, res) => {
   });
 
   await appointment.save();
+
+  // Créer une notification pour le médecin
+  const patient = await User.findById(req.user.id);
+  const notificationMessage = `Un nouveau rendez-vous a été pris par ${patient.prenom} ${patient.nom} pour le ${date} à ${time}.`;
+  const notification = new Notification({
+    recipientId: doctorId,
+    message: notificationMessage,
+    type: 'appointment_booked',
+    appointmentId: appointment._id,
+  });
+
+  await notification.save();
+  console.log(`Notification created for doctor ${doctorId}: ${notificationMessage}`);
+
+  // Optionally, send an email to the doctor as well
+  const doctorEmail = doctor.email;
+  const doctorName = `${doctor.prenom} ${doctor.nom}`;
+  const subject = 'Nouveau rendez-vous pris';
+  const text = `Bonjour Dr. ${doctorName},\n\n${notificationMessage}\n\nCordialement,\nL'équipe de Rdv-Med`;
+  const html = `
+    <h2>Bonjour Dr. ${doctorName},</h2>
+    <p>${notificationMessage}</p>
+    <p>Cordialement,<br>L'équipe de Rdv-Med</p>
+  `;
+
+  try {
+    await sendEmail({
+      to: doctorEmail,
+      subject,
+      text,
+      html,
+    });
+    console.log(`Email sent to ${doctorEmail}: ${notificationMessage}`);
+  } catch (error) {
+    console.error(`Failed to send email to ${doctorEmail}:`, error);
+    // Note: We don't fail the request if the email fails; we just log the error
+  }
 
   res.status(201).json({ message: 'Rendez-vous pris avec succès.', appointment });
 });
@@ -251,5 +290,36 @@ exports.sendMeetingLink = asyncHandler(async (req, res) => {
   } catch (error) {
     console.error(`Failed to send meeting link email to ${patientEmail}:`, error);
     res.status(500).json({ message: 'Échec de l’envoi du lien de réunion au patient.' });
+  }
+});
+
+exports.getAppointmentsPerDay = asyncHandler(async (req, res) => {
+  try {
+    // Aggregate appointments by day, excluding cancelled ones
+    const appointments = await Appointment.aggregate([
+      {
+        $match: {
+          status: { $ne: 'cancelled' },
+        },
+      },
+      {
+        $group: {
+          _id: '$day', // Group by the day field (e.g., 'lundi')
+          count: { $sum: 1 },
+        },
+      },
+    ]);
+
+    // Map the results to the order of days we want (Lundi to Dimanche)
+    const daysOrder = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche'];
+    const result = daysOrder.map((day) => {
+      const found = appointments.find((appt) => appt._id.toLowerCase() === day);
+      return found ? found.count : 0;
+    });
+
+    res.json(result);
+  } catch (error) {
+    console.error('Error fetching appointments per day:', error.message, error.stack);
+    res.status(500).json({ message: 'Erreur lors de la récupération des données.' });
   }
 });

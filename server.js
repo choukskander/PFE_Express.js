@@ -4,7 +4,7 @@ const dotenv = require("dotenv");
 const cors = require("cors");
 const fileUpload = require('express-fileupload');
 const path = require("path");
-
+const notificationRoutes = require('./routes/notificationRoutes');
 
 dotenv.config();
 
@@ -47,6 +47,8 @@ app.get('/test-email', async (req, res) => {
     res.status(500).json({ message: 'Failed to send test email', error: error.message });
   }
 });
+
+app.use('/api/notifications', notificationRoutes);
 
 app.get("/", (req, res) => {
   res.send("Bienvenue sur la plateforme de prise de rendez-vous médicaux !");

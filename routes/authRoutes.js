@@ -3,7 +3,7 @@ const router = express.Router();
 const { register, login, updateUserProfile, getUserProfile, searchDoctorsByCity, getSpecialites, updateDoctorSchedule, getDoctorSchedule, bookAppointment, getDoctorScheduleForPatient } = require('../controllers/authController');
 const authMiddleware = require('../middleware/authMiddleware');
 const adminMiddleware = require('../middleware/adminMiddleware');
-const { getAllUsers, updateUser, deleteUser, validateDoctorLicense } = require('../controllers/authController');
+const { getAllUsers, updateUser, deleteUser, validateDoctorLicense, getDoctorsBySpecialty } = require('../controllers/authController');
 router.post('/register', register);
 router.post('/login', login);
 router.put('/profile', authMiddleware, updateUserProfile);
@@ -14,6 +14,8 @@ router.put('/schedule', authMiddleware, updateDoctorSchedule);
 router.get('/schedule/:doctorId', authMiddleware, getDoctorSchedule); // Ensure authMiddleware is here
 router.get('/schedule-for-patient/:doctorId', authMiddleware, getDoctorScheduleForPatient);
 router.post('/appointment', authMiddleware, bookAppointment);
+router.get('/doctors-by-specialty', getDoctorsBySpecialty);
+
 // Routes pour admin
 router.get('/users', authMiddleware, adminMiddleware, getAllUsers); // Récupérer tous les comptes
 router.put('/users/:userId', authMiddleware, adminMiddleware, updateUser); // Mettre à jour un compte

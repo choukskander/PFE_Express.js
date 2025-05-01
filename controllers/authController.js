@@ -670,3 +670,37 @@ exports.validateDoctorLicense = asyncHandler(async (req, res) => {
   console.log('Doctor license validated:', user);
   res.status(200).json({ message: 'Licence du médecin validée avec succès.', user });
 });
+
+exports.getDoctorsBySpecialty = asyncHandler(async (req, res) => {
+  try {
+    // Aggregate users by specialty for validated internautes
+    const specialties = await User.aggregate([
+      {
+        $match: {
+          role: 'internaute',
+          validated: true,
+        },
+      },
+      {
+        $group: {
+          _id: { $ifNull: ['$specialite', 'Non spécifiée'] }, // Handle missing specialties
+          count: { $sum: 1 },
+        },
+      },
+      { $sort: { '_id': 1 } },
+    ]);
+
+    console.log('Doctors by specialty aggregation result:', specialties);
+
+    // Format the result for the pie chart
+    const data = specialties.map((item) => ({
+      name: item._id,
+      value: item.count,
+    }));
+
+    res.json(data);
+  } catch (error) {
+    console.error('Error fetching doctors by specialty:', error.message, error.stack);
+    res.status(500).json({ message: 'Erreur lors de la récupération des données.' });
+  }
+});
