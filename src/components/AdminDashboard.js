@@ -886,27 +886,39 @@ const AdminDashboard = () => {
                           <Card.Text>
                             <strong>Localisation:</strong> {user.localisation || 'Non spécifiée'}
                           </Card.Text>
-                          <Card.Text>
-                            <strong>Licence:</strong>{' '}
-                            {user.licenceProfessionnelle ? (
-                              isCloudinaryUrl(user.licenceProfessionnelle) ? (
-                                <span className="text-danger">
-                                  Licence non accessible (ancien format Cloudinary)
-                                </span>
-                              ) : (
-                                <a
-                                  href={`http://localhost:5000${user.licenceProfessionnelle}`}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="text-primary"
-                                >
-                                  Voir la licence
-                                </a>
-                              )
-                            ) : (
-                              'Non fournie'
-                            )}
-                          </Card.Text>
+                          <Card.Text className="d-flex align-items-center">
+  <strong className="me-2">Licence:</strong>{' '}
+  {user.licenceProfessionnelle ? (
+    isCloudinaryUrl(user.licenceProfessionnelle) ? (
+      <span className="text-danger bg-danger-subtle px-3 py-1 rounded-pill text-sm">
+        Licence non accessible
+      </span>
+    ) : (
+      <a
+        href={`http://localhost:5000${user.licenceProfessionnelle}`}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="text-white bg-primary d-inline-flex align-items-center px-3 py-1 rounded-pill text-sm font-medium hover:bg-primary-dark transition-colors duration-200 no-underline"
+      >
+        <span>Voir la licence</span>
+        <svg
+          className="ms-2"
+          width="16"
+          height="16"
+          fill="currentColor"
+          viewBox="0 0 24 24"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 18a8 8 0 1 1 0-16 8 8 0 0 1 0 16zm4-9h-3V8a1 1 0 0 0-2 0v3H8a1 1 0 0 0 0 2h3v3a1 1 0 0 0 2 0v-3h3a1 1 0 0 0 0-2z" />
+        </svg>
+      </a>
+    )
+  ) : (
+    <span className="text-muted bg-light px-3 py-1 rounded-pill text-sm">
+      Non fournie
+    </span>
+  )}
+</Card.Text>
                           <div className="d-flex justify-content-between mt-3">
                             {!user.validated && (
                               <Button

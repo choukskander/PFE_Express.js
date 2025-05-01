@@ -78,6 +78,76 @@ const PatientAppointments = () => {
     fetchAppointments();
   }, [navigate]);
 
+  const cancelAppointment = async (appointmentId) => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      Swal.fire({
+        icon: 'warning',
+        title: 'Session expirée',
+        text: 'Votre session a expiré. Veuillez vous reconnecter.',
+        toast: true,
+        position: 'top-end',
+        timer: 3000,
+        timerProgressBar: true,
+      });
+      localStorage.clear();
+      navigate('/login');
+      return;
+    }
+
+    try {
+      await axios.put(
+        `http://localhost:5000/api/appointments/cancel/${appointmentId}`,
+        {},
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+
+      // Update the local state to reflect the canceled status
+      setAppointments(
+        appointments.map((appt) =>
+          appt._id === appointmentId ? { ...appt, status: 'cancelled' } : appt
+        )
+      );
+
+      Swal.fire({
+        icon: 'success',
+        title: 'Rendez-vous annulé',
+        text: 'Votre rendez-vous a été annulé avec succès.',
+        toast: true,
+        position: 'top-end',
+        timer: 3000,
+        timerProgressBar: true,
+      });
+    } catch (err) {
+      console.error('Erreur lors de l’annulation du rendez-vous:', err);
+      Swal.fire({
+        icon: 'error',
+        title: 'Erreur',
+        text: err.response?.data?.message || 'Impossible d’annuler le rendez-vous.',
+        toast: true,
+        position: 'top-end',
+        timer: 3000,
+        timerProgressBar: true,
+      });
+
+      if (err.response?.status === 401) {
+        Swal.fire({
+          icon: 'warning',
+          title: 'Session expirée',
+          text: 'Votre session a expiré. Veuillez vous reconnecter.',
+          toast: true,
+          position: 'top-end',
+          timer: 3000,
+          timerProgressBar: true,
+        });
+        localStorage.clear();
+        navigate('/login');
+      }
+    }
+  };
+
   return (
     <div className="bg-gray-100 min-h-screen">
       <Navbar />
@@ -190,6 +260,17 @@ const PatientAppointments = () => {
                       </span>
                     </p>
                   </div>
+                  {/* Cancel Button - Only visible for pending appointments */}
+                  {appt.status === 'pending' && (
+                    <div className="mt-4">
+                      <button
+                        onClick={() => cancelAppointment(appt._id)}
+                        className="w-full bg-red-500 text-white px-4 py-2 rounded-md hover:bg-red-600 transition-colors duration-200"
+                      >
+                        Annuler le rendez-vous
+                      </button>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>

@@ -222,8 +222,29 @@ const DoctorAppointments = () => {
           )}
 
           {!isLoading && !error && appointments.length === 0 && (
-            <div className="bg-blue-50 border-l-4 border-blue-500 text-blue-700 p-4 rounded-lg text-center">
-              <p>Aucun rendez-vous pour le moment.</p>
+            <div className="bg-white border border-gray-200 rounded-xl shadow-lg p-8 text-center max-w-md mx-auto transition-transform transform hover:scale-105 duration-300">
+              <div className="flex justify-center mb-4">
+                <svg
+                  className="w-16 h-16 text-blue-500"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
+                </svg>
+              </div>
+              <h3 className="text-xl font-semibold text-gray-800 mb-2">
+                Aucun rendez-vous
+              </h3>
+              <p className="text-gray-600">
+                Vous n’avez aucun rendez-vous pour le moment. Vérifiez vos horaires ou attendez que des patients prennent rendez-vous.
+              </p>
             </div>
           )}
 

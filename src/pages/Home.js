@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import * as echarts from 'echarts';
 import axios from 'axios';
 import Navbar from './Navbar';
@@ -17,6 +17,12 @@ const Home = () => {
   const [specialites, setSpecialites] = useState([
     { value: '', label: 'Sélectionner une spécialité' },
   ]);
+
+  // Refs for chart instances and DOM elements
+  const appointmentsPerDayChartRef = useRef(null);
+  const doctorsBySpecialtyChartRef = useRef(null);
+  const appointmentsPerDayChartDomRef = useRef(null);
+  const doctorsBySpecialtyChartDomRef = useRef(null);
 
   useEffect(() => {
     const fetchSpecialites = async () => {
@@ -40,23 +46,103 @@ const Home = () => {
   }, []);
 
   useEffect(() => {
-    const consultationsChart = echarts.init(document.getElementById('consultationsChart'));
-    consultationsChart.setOption({
-      title: { text: 'Consultations Mensuelles' },
-      tooltip: {},
-      xAxis: { data: ['Jan', 'Fév', 'Mars', 'Avr'] },
-      yAxis: {},
-      series: [{ type: 'bar', data: [50, 120, 90, 130] }],
-    });
+    // Fetch data for appointments per day
+    const fetchAppointmentsPerDay = async () => {
+      try {
+        const response = await axios.get(`${API_URL}/api/appointments/appointments-per-day`);
+        const days = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'];
 
-    const accuracyChart = echarts.init(document.getElementById('accuracyChart'));
-    accuracyChart.setOption({
-      title: { text: 'Précision IA (%)' },
-      tooltip: {},
-      xAxis: { data: ['2022', '2023', '2024'] },
-      yAxis: {},
-      series: [{ type: 'line', data: [87, 91, 95] }],
-    });
+        if (appointmentsPerDayChartDomRef.current) {
+          appointmentsPerDayChartRef.current = echarts.init(appointmentsPerDayChartDomRef.current);
+          appointmentsPerDayChartRef.current.setOption({
+            title: { text: 'Rendez-vous par jour' },
+            tooltip: {},
+            xAxis: { data: days },
+            yAxis: {},
+            series: [
+              {
+                type: 'bar',
+                data: response.data, // e.g., [2, 2, 0, 4, 1, 0, 0]
+                itemStyle: {
+                  color: '#1890ff',
+                },
+              },
+            ],
+          });
+        }
+      } catch (error) {
+        console.error('Erreur lors de la récupération des rendez-vous par jour:', error);
+        Swal.fire({
+          icon: 'error',
+          title: 'Erreur',
+          text: 'Impossible de charger les données des rendez-vous par jour.',
+          toast: true,
+          position: 'top-end',
+          timer: 3000,
+          timerProgressBar: true,
+        });
+      }
+    };
+
+    // Fetch data for doctors by specialty
+    const fetchDoctorsBySpecialty = async () => {
+      try {
+        const response = await axios.get(`${API_URL}/api/auth/doctors-by-specialty`);
+        if (doctorsBySpecialtyChartDomRef.current) {
+          doctorsBySpecialtyChartRef.current = echarts.init(doctorsBySpecialtyChartDomRef.current);
+          doctorsBySpecialtyChartRef.current.setOption({
+            title: { text: 'Médecins par spécialité' },
+            tooltip: {},
+            series: [
+              {
+                type: 'pie',
+                data: response.data, // e.g., [{ name: 'Orthopediste', value: 1 }, { name: 'dentiste', value: 2 }, { name: 'generaliste', value: 1 }]
+                radius: '55%',
+                label: {
+                  show: true,
+                  position: 'outside',
+                },
+              },
+            ],
+          });
+        }
+      } catch (error) {
+        console.error('Erreur lors de la récupération des médecins par spécialité:', error);
+        Swal.fire({
+          icon: 'error',
+          title: 'Erreur',
+          text: 'Impossible de charger les données des médecins par spécialité.',
+          toast: true,
+          position: 'top-end',
+          timer: 3000,
+          timerProgressBar: true,
+        });
+      }
+    };
+
+    // Fetch data and initialize charts
+    fetchAppointmentsPerDay();
+    fetchDoctorsBySpecialty();
+
+    // Handle window resize
+    const handleResize = () => {
+      if (appointmentsPerDayChartRef.current) appointmentsPerDayChartRef.current.resize();
+      if (doctorsBySpecialtyChartRef.current) doctorsBySpecialtyChartRef.current.resize();
+    };
+    window.addEventListener('resize', handleResize);
+
+    // Cleanup on unmount
+    return () => {
+      if (appointmentsPerDayChartRef.current) {
+        appointmentsPerDayChartRef.current.dispose();
+        appointmentsPerDayChartRef.current = null;
+      }
+      if (doctorsBySpecialtyChartRef.current) {
+        doctorsBySpecialtyChartRef.current.dispose();
+        doctorsBySpecialtyChartRef.current = null;
+      }
+      window.removeEventListener('resize', handleResize);
+    };
   }, []);
 
   const validateQuery = () => {
@@ -253,8 +339,8 @@ const Home = () => {
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <h2 className="text-lg font-semibold mb-4">Graphiques Statistiques</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              <div id="consultationsChart" style={{ width: '100%', height: '400px' }}></div>
-              <div id="accuracyChart" style={{ width: '100%', height: '400px' }}></div>
+              <div ref={appointmentsPerDayChartDomRef} id="consultationsChart" style={{ width: '100%', height: '400px' }}></div>
+              <div ref={doctorsBySpecialtyChartDomRef} id="accuracyChart" style={{ width: '100%', height: '400px' }}></div>
             </div>
           </div>
         </section>
