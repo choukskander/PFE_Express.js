@@ -1,0 +1,59 @@
+.availableFields {
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 16px;
+    background-color: #f9fafb;
+  }
+  
+  .formSection {
+    padding: 16px;
+  }
+  
+  .infoHeader {
+    font-size: 1.25rem;
+    font-weight: 500;
+    margin-bottom: 16px;
+    text-align: center;
+  }
+  
+  .formCard {
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 16px;
+    background-color: #ffffff;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  }
+  
+  .formCard p {
+    margin-bottom: 8px;
+    font-weight: 500;
+  }
+  
+  .dropArea {
+    border: 2px dashed #d1d5db;
+    border-radius: 4px;
+    padding: 16px;
+    min-height: 100px;
+    text-align: center;
+    margin-top: 16px;
+    background-color: #f9fafb;
+  }
+  
+  .dropArea p {
+    margin: 0;
+    color: #6b7280;
+  }
+  
+  .draggableInput {
+    background-color: #ffffff;
+    border: 1px solid #d1d5db;
+    border-radius: 4px;
+    padding: 8px;
+    margin-bottom: 8px;
+    cursor: move;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    justify-content: center;
+    text-align: center;
+  }

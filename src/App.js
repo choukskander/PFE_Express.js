@@ -1,6 +1,6 @@
 import React from "react";
-import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
-import { UserProvider, useUser } from "./context/UserContext";
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { UserProvider } from "./context/UserContext";
 
 import Home from "./pages/Home";
 import Login from "./pages/Login";
@@ -18,21 +18,13 @@ import DoctorAppointments from './pages/DoctorAppointments';
 import PatientAppointments from './pages/PatientAppointments';
 import MeetingPage from './pages/Meeting';
 import AdminDashboard from './components/AdminDashboard';
+import MedicalForumBuilder from './components/MedicalForumBuilder';
 import ErrorPage from './pages/error.jsx';
 import '@fortawesome/fontawesome-free/css/all.min.css';
 import 'antd/dist/reset.css';
-
-// Composant pour route protégée selon le rôle
-const RoleProtectedRoute = ({ children, allowedRoles }) => {
-  const { user } = useUser();
-
-  if (!user) return <Navigate to="/login" />;
-  if (allowedRoles.includes(user.role)) {
-    return children;
-  } else {
-    return <Navigate to="/" />;
-  }
-};
+import ForumList from "./components/ForumList";
+import ForumResponse from "./components/ForumResponse";
+import ForumResponses from "./components/ForumResponses";
 
 function App() {
   return (
@@ -55,6 +47,10 @@ function App() {
         <Route path="/my-appointments/patient" element={<PatientAppointments />} />
         <Route path="/doctor" element={<DoctorDashboard />} />
         <Route path="/meeting" element={<MeetingPage />} />
+        <Route path="/create-forum" element={<MedicalForumBuilder />} />
+        <Route path="/forums" element={<ForumList />} />
+        <Route path="/forum/:id" element={<ForumResponse />} />
+        <Route path="/forum-responses/:forumId" element={<ForumResponses />} />
           {/* ✅ Route protégée uniquement pour admin */}
           <Route path="/admin-dashboard" element={<AdminDashboard />} /> 
 
