@@ -35,26 +35,21 @@ function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/ProfileScreen" element={<ProfileScreen />} />
-          {/* ✅ Pages de création de compte accessibles librement */}
           <Route path="/registerpatient" element={<PatientPage />} />
           <Route path="/registerinternaute" element={<InternautePage />} />
-          
           <Route path="/search-doctors" element={<SearchDoctors />} />
           <Route path="/doctor-schedule" element={<DoctorSchedule />} />
           <Route path="/doctors" element={<DoctorList />} />
-        <Route path="/doctor-schedule/:doctorId" element={<DoctorSchedulePatient />} />
-        <Route path="/my-appointments/doctor" element={<DoctorAppointments />} />
-        <Route path="/my-appointments/patient" element={<PatientAppointments />} />
-        <Route path="/doctor" element={<DoctorDashboard />} />
-        <Route path="/meeting" element={<MeetingPage />} />
-        <Route path="/create-forum" element={<MedicalForumBuilder />} />
-        <Route path="/forums" element={<ForumList />} />
-        <Route path="/forum/:id" element={<ForumResponse />} />
-        <Route path="/forum-responses/:forumId" element={<ForumResponses />} />
-          {/* ✅ Route protégée uniquement pour admin */}
-          <Route path="/admin-dashboard" element={<AdminDashboard />} /> 
-
-          {/* ✅ 404 fallback */}
+          <Route path="/doctor-schedule/:doctorId" element={<DoctorSchedulePatient />} />
+          <Route path="/my-appointments/doctor" element={<DoctorAppointments />} />
+          <Route path="/my-appointments/patient" element={<PatientAppointments />} />
+          <Route path="/doctor" element={<DoctorDashboard />} />
+          <Route path="/meeting" element={<MeetingPage />} />
+          <Route path="/create-forum" element={<MedicalForumBuilder />} />
+          <Route path="/forums" element={<ForumList />} />
+          <Route path="/forum/:id" element={<ForumResponse />} />
+          <Route path="/forum-responses/:forumId" element={<ForumResponses />} />
+          <Route path="/admin-dashboard" element={<AdminDashboard />} />
           <Route path="*" element={<ErrorPage />} />
         </Routes>
       </Router>
