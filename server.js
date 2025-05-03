@@ -33,6 +33,7 @@ mongoose
 // Routes
 app.use("/api/auth", require("./routes/authRoutes"));
 app.use("/api/appointments", require("./routes/appointmentRoutes"));
+app.use('/api/forum', require('./routes/forumRoutes'));
 app.get('/test-email', async (req, res) => {
   try {
     const sendEmail = require('./utils/sendEmail');
