@@ -53,7 +53,7 @@ const Login = () => {
       } else if (user.role === 'patient') {
         navigate('/my-appointments/patient');
       } else {
-        navigate('/'); // Par défaut, si le rôle est inconnu
+        navigate('/'); 
       }
     } catch (err) {
       const Toast = Swal.mixin({
