@@ -291,11 +291,33 @@ const AdminDashboard = () => {
   const handleAddUser = () => navigate('/register');
 
   const handleDeleteForum = async (forumId) => {
-    const result = await Swal.fire({ title: 'Êtes-vous sûr ?', text: 'Irreversible !', icon: 'warning', showCancelButton: true, confirmButtonText: 'Oui', cancelButtonText: 'Annuler' });
+    const result = await Swal.fire({
+      title: 'Êtes-vous sûr ?',
+      text: 'Cette action est irréversible et supprimera également toutes les réponses associées !',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'Oui, supprimer',
+      cancelButtonText: 'Annuler',
+    });
     if (result.isConfirmed) {
-      await axios.delete(`http://localhost:5000/api/forum/${forumId}`, { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } });
-      setForums(forums.filter((forum) => forum._id !== forumId));
-      showNotification('Forum supprimé');
+      try {
+        await axios.delete(`http://localhost:5000/api/forum/${forumId}`, {
+          headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+        });
+        setForums(forums.filter((forum) => forum._id !== forumId));
+        showNotification('Forum et ses réponses supprimés');
+      } catch (err) {
+        console.error('Erreur lors de la suppression du forum:', err);
+        Swal.fire({
+          icon: 'error',
+          title: 'Erreur',
+          text: err.response?.data?.message || 'Échec de la suppression du forum.',
+          toast: true,
+          position: 'top-end',
+          timer: 3000,
+          timerProgressBar: true,
+        });
+      }
     }
   };
 

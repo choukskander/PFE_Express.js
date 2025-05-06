@@ -91,7 +91,11 @@ const DroppedInput = ({
           name={id}
           valuePropName="checked"
         >
-          <Checkbox.Group options={options} />
+          <Checkbox.Group>
+            {options && options.map((option) => (
+              <Checkbox key={option} value={option}>{option}</Checkbox>
+            ))}
+          </Checkbox.Group>
         </Form.Item>
       );
       break;
@@ -112,7 +116,11 @@ const DroppedInput = ({
           name={id}
           valuePropName="checked"
         >
-          <Radio.Group options={options} />
+          <Radio.Group>
+            {options && options.map((option) => (
+              <Radio key={option} value={option}>{option}</Radio>
+            ))}
+          </Radio.Group>
         </Form.Item>
       );
       break;
@@ -133,13 +141,52 @@ const DroppedInput = ({
           name={id}
         >
           <Select>
-            {options &&
-              options.map((option) => (
-                <Select.Option key={option} value={option}>
-                  {option}
-                </Select.Option>
-              ))}
+            {options && options.map((option) => (
+              <Select.Option key={option} value={option}>
+                {option}
+              </Select.Option>
+            ))}
           </Select>
+        </Form.Item>
+      );
+      break;
+    case "date":
+      inputComponent = (
+        <Form.Item
+          label={
+            <span
+              style={{
+                fontSize: labelFontSize,
+                fontWeight: labelFontWeight,
+                color: labelColor,
+              }}
+            >
+              {label}
+            </span>
+          }
+          name={id}
+        >
+          <DatePicker style={{ width: "100%" }} />
+        </Form.Item>
+      );
+      break;
+    case "number":
+      inputComponent = (
+        <Form.Item
+          label={
+            <span
+              style={{
+                fontSize: labelFontSize,
+                fontWeight: labelFontWeight,
+                color: labelColor,
+              }}
+            >
+              {label}
+            </span>
+          }
+          name={id}
+        >
+          <InputNumber style={{ width: "100%" }} />
         </Form.Item>
       );
       break;

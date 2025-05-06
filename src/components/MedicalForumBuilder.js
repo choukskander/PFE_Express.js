@@ -91,14 +91,20 @@ const MedicalForumBuilder = () => {
   const onDrop = (e) => {
     e.preventDefault();
     const data = JSON.parse(e.dataTransfer.getData("text/plain"));
-    setDroppedItems([...droppedItems, { 
-      ...data, 
-      id: Date.now().toString(),
-      required: false,
-      labelColor: "#000000",
-      labelFontSize: 14,
-      labelFontWeight: 400
-    }]);
+    setDroppedItems([
+      ...droppedItems,
+      {
+        ...data,
+        id: Date.now().toString(),
+        required: false,
+        labelColor: "#000000",
+        labelFontSize: 14,
+        labelFontWeight: 400,
+        options: ["select", "checkbox", "radio"].includes(data.type)
+          ? ["Option 1", "Option 2"] // Default options
+          : undefined,
+      },
+    ]);
   };
 
   const onDragOver = (e) => {
@@ -110,7 +116,7 @@ const MedicalForumBuilder = () => {
       id,
       label,
       type,
-      options,
+      options: options || [], // Ensure options is always an array
       required,
       labelColor,
       labelFontSize,
@@ -124,14 +130,16 @@ const MedicalForumBuilder = () => {
   };
 
   const updateItem = (updatedItem) => {
-    setDroppedItems(droppedItems.map(item =>
-      item.id === updatedItem.id ? { ...item, ...updatedItem } : item
-    ));
+    setDroppedItems(
+      droppedItems.map((item) =>
+        item.id === updatedItem.id ? { ...item, ...updatedItem } : item
+      )
+    );
     closeDrawer();
   };
 
   const deleteItem = (id) => {
-    setDroppedItems(droppedItems.filter(item => item.id !== id));
+    setDroppedItems(droppedItems.filter((item) => item.id !== id));
   };
 
   const onFinish = async (values) => {
@@ -144,17 +152,24 @@ const MedicalForumBuilder = () => {
     const forumData = {
       title: values.title,
       description: values.description,
-      backgroundColor: values.backgroundColor.toHexString?.(),
+      backgroundColor: values.backgroundColor?.toHexString
+        ? values.backgroundColor.toHexString()
+        : "#ffffff",
       createdBy: {
         id: user._id,
         name: `${user.nom} ${user.prenom}`,
         specialty: values.specialty || "Non spécifié",
       },
-      fields: droppedItems.map(item => ({
+      fields: droppedItems.map((item) => ({
         label: item.label,
         type: item.type,
+        options: ["select", "checkbox", "radio"].includes(item.type)
+          ? item.options || []
+          : undefined,
         required: item.required,
-        labelColor: item.labelColor.toHexString?.(),
+        labelColor: item.labelColor?.toHexString
+          ? item.labelColor.toHexString()
+          : "#000000",
         labelFontSize: item.labelFontSize,
         labelFontWeight: item.labelFontWeight,
       })),
@@ -162,14 +177,15 @@ const MedicalForumBuilder = () => {
 
     try {
       const token = localStorage.getItem("token");
-      await axios.post("http://localhost:5000/api/forum", forumData, {
+      const response = await axios.post("http://localhost:5000/api/forum", forumData, {
         headers: { Authorization: `Bearer ${token}` },
       });
+      console.log('Forum created:', response.data); // Debug log
       alert("Forum créé avec succès !");
       navigate(user.role === "admin" ? "/admin-dashboard" : "/forums");
     } catch (error) {
-      console.error("Erreur:", error);
-      alert("Erreur lors de la création du forum: " + error.message);
+      console.error("Erreur:", error.response?.data || error.message);
+      alert("Erreur lors de la création du forum: " + (error.response?.data?.message || error.message));
     }
   };
 
