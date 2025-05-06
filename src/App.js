@@ -16,6 +16,7 @@ import DoctorList from './pages/DoctorList';
 import DoctorSchedulePatient from './pages/DoctorSchedulePatient';
 import DoctorAppointments from './pages/DoctorAppointments';
 import PatientAppointments from './pages/PatientAppointments';
+import Historique from './pages/Historique';
 import MeetingPage from './pages/Meeting';
 import AdminDashboard from './components/AdminDashboard';
 import MedicalForumBuilder from './components/MedicalForumBuilder';
@@ -43,6 +44,7 @@ function App() {
           <Route path="/doctor-schedule/:doctorId" element={<DoctorSchedulePatient />} />
           <Route path="/my-appointments/doctor" element={<DoctorAppointments />} />
           <Route path="/my-appointments/patient" element={<PatientAppointments />} />
+          <Route path="/historique/patient" element={<Historique />} />
           <Route path="/doctor" element={<DoctorDashboard />} />
           <Route path="/meeting" element={<MeetingPage />} />
           <Route path="/create-forum" element={<MedicalForumBuilder />} />

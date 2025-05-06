@@ -833,13 +833,16 @@ const Navbar = () => {
                   >
                     Diagnostic IA
                   </Link>
-                  <Link
-                    to="/historique"
-                    onClick={handleLinkClick}
-                    className="no-underline block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                  >
-                    Historique
-                  </Link>
+                 
+                  {user && user.role === 'patient' && (
+                    <Link
+                      to="/historique/patient"
+                      onClick={handleLinkClick}
+                      className="no-underline block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                    >
+                      Historique
+                    </Link>
+                  )}
                   {user && user.role === 'patient' && (
                     <Link
                       to="/my-appointments/patient"
