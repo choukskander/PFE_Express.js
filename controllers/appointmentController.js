@@ -118,7 +118,7 @@ exports.getPatientAppointments = asyncHandler(async (req, res) => {
   // Récupérer les rendez-vous associés au patient
   const appointments = await Appointment.find({ patientId })
     .populate('doctorId', 'nom prenom email specialite') // Inclure les informations du médecin
-    .sort({ date: 1, time: 1 }); // Trier par date et heure
+    .sort({ date: -1, time: -1 }); // Trier par date et heure
 
   if (!appointments || appointments.length === 0) {
     console.log('No appointments found for patientId:', patientId);
