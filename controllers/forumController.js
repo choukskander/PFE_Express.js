@@ -131,6 +131,19 @@ exports.createForum = asyncHandler(async (req, res) => {
     return res.status(400).json({ message: 'Titre, description, créateur et champs sont requis.' });
   }
 
+  // Validate options for select, checkbox, and radio fields
+  for (const field of fields) {
+    if (['select', 'checkbox', 'radio'].includes(field.type)) {
+      if (!field.options || !Array.isArray(field.options) || field.options.length === 0) {
+        return res.status(400).json({
+          message: `Le champ "${field.label}" de type "${field.type}" doit avoir au moins une option.`,
+        });
+      }
+    }
+  }
+
+  console.log('Received fields:', JSON.stringify(fields, null, 2)); // Debug log
+
   const forum = new Forum({
     title,
     description,
@@ -189,4 +202,20 @@ exports.getForumResponses = asyncHandler(async (req, res) => {
   const responses = await ForumResponse.find({ forumId: req.params.forumId })
     .populate('submittedBy', 'nom prenom role');
   res.json({ data: responses });
+});
+
+// Delete a forum (admin only, enforced by adminMiddleware)
+exports.deleteForum = asyncHandler(async (req, res) => {
+  const forum = await Forum.findById(req.params.id);
+  if (!forum) {
+    return res.status(404).json({ message: 'Forum non trouvé.' });
+  }
+
+  // Supprimer toutes les réponses associées au forum
+  await ForumResponse.deleteMany({ forumId: req.params.id });
+
+  // Supprimer le forum
+  await Forum.deleteOne({ _id: req.params.id });
+
+  res.json({ message: 'Forum et ses réponses supprimés avec succès.' });
 });

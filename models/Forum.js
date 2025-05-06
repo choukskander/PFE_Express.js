@@ -38,6 +38,7 @@ const forumSchema = new mongoose.Schema({
         type: String,
         required: true,
       },
+      options: [{ type: String }], // Add options field as an array of strings
       required: {
         type: Boolean,
         default: false,

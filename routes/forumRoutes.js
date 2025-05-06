@@ -14,6 +14,7 @@ const {
   getForumById,
   submitForumResponse,
   getForumResponses,
+  deleteForum,
 } = require('../controllers/forumController');
 const authMiddleware = require('../middleware/authMiddleware');
 const adminMiddleware = require('../middleware/adminMiddleware');
@@ -30,5 +31,6 @@ router.post('/', authMiddleware, createForum); // Create forum (internaute only,
 router.get('/:id', authMiddleware, getForumById); // Get forum by ID (accessible to all authenticated users)
 router.post('/responses', authMiddleware, submitForumResponse); // Submit forum response (patient, admin, or internaute)
 router.get('/responses/:forumId', authMiddleware, getForumResponses); // Get forum responses (internaute and admin only)
+router.delete('/:id', authMiddleware, adminMiddleware, deleteForum);
 
 module.exports = router;
