@@ -772,13 +772,15 @@ const Navbar = () => {
                   Espace Médecin <i className="ri-arrow-down-s-line ml-1"></i>
                 </button>
                 <div className={`dropdown-content rounded-md mt-2 ${isDoctorDropdownOpen ? 'open' : ''}`}>
+                  {user && user.role === 'internaute' && (
                   <Link
-                    to="/dossiers"
+                    to="/doctor"
                     onClick={handleLinkClick}
                     className="no-underline block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                   >
-                    Partage de Dossiers
+                    Espace Médecin
                   </Link>
+                  )}
                   {user && user.role === 'internaute' && (
                     <Link
                       to="/my-appointments/doctor"

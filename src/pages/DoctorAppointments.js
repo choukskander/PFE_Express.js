@@ -9,6 +9,8 @@ const DoctorAppointments = () => {
   const [appointments, setAppointments] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('Tous');
 
   const fetchAppointments = async () => {
     const token = localStorage.getItem('token');
@@ -34,7 +36,7 @@ const DoctorAppointments = () => {
       Swal.fire({
         icon: 'warning',
         title: 'Session expirée',
-        text: 'Votre session a expiré. Veuillez vous reconnecter.',
+        text: 'Votre session a expirée. Veuillez vous reconnecter.',
         toast: true,
         position: 'top-end',
         timer: 3000,
@@ -61,7 +63,7 @@ const DoctorAppointments = () => {
         Swal.fire({
           icon: 'warning',
           title: 'Session expirée',
-          text: 'Votre session a expiré. Veuillez vous reconnecter.',
+          text: 'Votre session a expirée. Veuillez vous reconnecter.',
           toast: true,
           position: 'top-end',
           timer: 3000,
@@ -90,7 +92,7 @@ const DoctorAppointments = () => {
       Swal.fire({
         icon: 'warning',
         title: 'Session expirée',
-        text: 'Votre session a expiré. Veuillez vous reconnecter.',
+        text: 'Votre session a expirée. Veuillez vous reconnecter.',
         toast: true,
         position: 'top-end',
         timer: 3000,
@@ -178,27 +180,73 @@ const DoctorAppointments = () => {
     });
   };
 
+  // Filtrer les rendez-vous par nom du patient et statut
+  const filteredAppointments = appointments.filter((appt) =>
+    `${appt.patientId.nom} ${appt.patientId.prenom}`.toLowerCase().includes(searchTerm.toLowerCase()) &&
+    (statusFilter === 'Tous' || appt.status.toLowerCase() === statusFilter.toLowerCase())
+  );
+
   return (
-    <div className="bg-gray-100 min-h-screen">
+    <div className="bg-gray-50 min-h-screen font-sans">
       <Navbar />
-      <main className="pt-24 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-6xl mx-auto">
-          <div className="flex justify-between items-center mb-8">
-            <h2 className="text-3xl font-bold text-blue-600">
-              Mes Rendez-vous
-            </h2>
+      <main className="pt-28 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-7xl mx-auto">
+          {/* Header Section */}
+          <div className="mb-10">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
+              <h2 className="text-4xl font-extrabold text-indigo-700 mb-4 sm:mb-0">
+                Mes Rendez-vous
+              </h2>
+              <div className="relative ">
+                <input
+                  type="text"
+                  placeholder="Rechercher un patient..."
+                  className="w-full sm:w-72 pl-10 pr-4 py-3 border-2 border-indigo-200 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:border-indigo-600 transition-all duration-300 hover:border-indigo-300"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+                <svg
+                  className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-indigo-400"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                  />
+                </svg>
+              </div>
+            </div>
+            <div className="flex items-center">
+              <label className="text-gray-700 font-medium mr-3">Filtrer par statut :</label>
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="border border-gray-200 rounded-lg px-4 py-2 bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all duration-300"
+              >
+                <option value="Tous">Tous</option>
+                <option value="pending">En attente</option>
+                <option value="confirmed">Confirmé</option>
+                <option value="cancelled">Annulé</option>
+              </select>
+            </div>
           </div>
 
+          {/* Loading State */}
           {isLoading && (
-            <div className="flex justify-center items-center">
+            <div className="flex justify-center items-center py-10">
               <svg
-                className="animate-spin h-8 w-8 text-blue-600"
+                className="animate-spin h-10 w-10 text-indigo-600"
                 xmlns="http://www.w3.org/2000/svg"
                 fill="none"
                 viewBox="0 0 24 24"
               >
                 <circle
-                  className="opacity-25"
+                  className="opacity-20"
                   cx="12"
                   cy="12"
                   r="10"
@@ -206,26 +254,44 @@ const DoctorAppointments = () => {
                   strokeWidth="4"
                 />
                 <path
-                  className="opacity-75"
+                  className="opacity-80"
                   fill="currentColor"
                   d="M4 12a8 8 0 018-8v8H4z"
                 />
               </svg>
-              <span className="ml-2 text-gray-600">Chargement...</span>
+              <span className="ml-3 text-lg text-gray-600 font-medium">Chargement des rendez-vous...</span>
             </div>
           )}
 
+          {/* Error State */}
           {error && !isLoading && (
-            <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded-lg mb-6">
-              <p>{error}</p>
+            <div className="bg-red-50 border-l-4 border-red-500 text-red-800 p-6 rounded-lg shadow-md mb-8">
+              <div className="flex items-center">
+                <svg
+                  className="w-6 h-6 mr-3"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
+                </svg>
+                <p className="text-base">{error}</p>
+              </div>
             </div>
           )}
 
-          {!isLoading && !error && appointments.length === 0 && (
-            <div className="bg-white border border-gray-200 rounded-xl shadow-lg p-8 text-center max-w-md mx-auto transition-transform transform hover:scale-105 duration-300">
-              <div className="flex justify-center mb-4">
+          {/* No Appointments State */}
+          {!isLoading && !error && filteredAppointments.length === 0 && (
+            <div className="bg-white border border-gray-100 rounded-2xl shadow-md p-10 text-center max-w-lg mx-auto transition-all duration-300 hover:shadow-lg">
+              <div className="flex justify-center mb-6">
                 <svg
-                  className="w-16 h-16 text-blue-500"
+                  className="w-20 h-20 text-indigo-400"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -239,26 +305,27 @@ const DoctorAppointments = () => {
                   />
                 </svg>
               </div>
-              <h3 className="text-xl font-semibold text-gray-800 mb-2">
+              <h3 className="text-2xl font-semibold text-gray-800 mb-3">
                 Aucun rendez-vous
               </h3>
-              <p className="text-gray-600">
-                Vous n’avez aucun rendez-vous pour le moment. Vérifiez vos horaires ou attendez que des patients prennent rendez-vous.
+              <p className="text-gray-500 text-lg">
+                Vous n’avez aucun rendez-vous correspondant à vos critères. Vérifiez vos horaires ou attendez de nouvelles demandes.
               </p>
             </div>
           )}
 
-          {!isLoading && !error && appointments.length > 0 && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {appointments.map((appt) => (
+          {/* Appointments List */}
+          {!isLoading && !error && filteredAppointments.length > 0 && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+              {filteredAppointments.map((appt) => (
                 <div
                   key={appt._id}
-                  className="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl transition-shadow duration-300"
+                  className="bg-white rounded-2xl shadow-md p-6 transition-all duration-300 hover:shadow-xl hover:-translate-y-1"
                 >
-                  <div className="flex items-center mb-4">
-                    <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center">
+                  <div className="flex items-center mb-5">
+                    <div className="w-14 h-14 rounded-full bg-indigo-50 flex items-center justify-center">
                       <svg
-                        className="w-6 h-6 text-blue-600"
+                        className="w-7 h-7 text-indigo-600"
                         fill="none"
                         stroke="currentColor"
                         viewBox="0 0 24 24"
@@ -272,30 +339,47 @@ const DoctorAppointments = () => {
                         />
                       </svg>
                     </div>
-                    <h3 className="ml-4 text-lg font-semibold text-gray-800">
+                    <h3 className="ml-4 text-xl font-semibold text-gray-800">
                       {appt.patientId.nom} {appt.patientId.prenom}
                     </h3>
                   </div>
-                  <div className="space-y-2">
-                    <p className="text-gray-600">
-                      <span className="font-medium">Email:</span>{' '}
-                      {appt.patientId.email}
+                  <div className="space-y-3 text-gray-600">
+                    <p className="flex items-center">
+                      <svg className="w-5 h-5 mr-2 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l9-6 9 6v10a2 2 0 01-2 2H5a2 2 0 01-2-2V8z" />
+                      </svg>
+                      <span className="font-medium">Email:</span> {appt.patientId.email}
                     </p>
-                    <p className="text-gray-600">
-                      <span className="font-medium">Date:</span> {appt.date}
+                    <p className="flex items-center">
+                      <svg className="w-5 h-5 mr-2 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                      <span className="font-medium">Date:</span> {appt.date}
                     </p>
-                    <p className="text-gray-600">
-                      <span className="font-medium">Heure:</span> {appt.time}
+                    <p className="flex items-center">
+                      <svg className="w-5 h-5 mr-2 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      <span className="font-medium">Heure:</span> {appt.time}
                     </p>
-                    <p className="text-gray-600">
-                      <span className="font-medium">Jour:</span> {appt.day}
+                    <p className="flex items-center">
+                      <svg className="w-5 h-5 mr-2 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m0 0V9a2 2 0 012-2h10a2 2 0 012 2v2" />
+                      </svg>
+                      <span className="font-medium">Jour:</span> {appt.day}
                     </p>
-                    <div className="flex items-center space-x-2">
+                    <div className="flex items-center space-x-3">
                       <span className="font-medium text-gray-600">Statut:</span>
                       <select
                         value={appt.status}
                         onChange={(e) => handleStatusChange(appt._id, e.target.value)}
-                        className="border border-gray-300 rounded-lg px-2 py-1 text-sm focus:ring-blue-500 focus:border-blue-500"
+                        className={`border rounded-lg px-3 py-1 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-colors duration-300 ${
+                          appt.status.toLowerCase() === 'confirmed'
+                            ? 'border-green-200 bg-green-50 text-green-700'
+                            : appt.status.toLowerCase() === 'cancelled'
+                            ? 'border-red-200 bg-red-50 text-red-700'
+                            : 'border-yellow-200 bg-yellow-50 text-yellow-700'
+                        }`}
                       >
                         <option value="pending">En attente</option>
                         <option value="confirmed">Confirmé</option>
@@ -305,12 +389,12 @@ const DoctorAppointments = () => {
                     {(appt.status || '').trim().toLowerCase() === 'confirmed' ? (
                       <button
                         onClick={() => joinMeeting(appt)}
-                        className="mt-4 w-full bg-green-600 text-white py-2 rounded-lg font-semibold hover:bg-green-700 transition-colors"
+                        className="mt-5 w-full bg-gradient-to-r from-green-500 to-green-600 text-white py-2.5 rounded-lg font-semibold shadow-md hover:from-green-600 hover:to-green-700 transition-all duration-300"
                       >
                         Rejoindre la réunion
                       </button>
                     ) : (
-                      <p className="mt-4 text-gray-600">
+                      <p className="mt-5 text-gray-500 italic">
                         Statut non confirmé (actuel: {appt.status})
                       </p>
                     )}

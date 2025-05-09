@@ -16,34 +16,44 @@ const DoctorDashboard = () => {
   const [appointments, setAppointments] = useState([]);
   const [slots, setSlots] = useState([]);
   const [profile, setProfile] = useState({});
+  const [isProfileLoading, setIsProfileLoading] = useState(true);
+  const [horaires, setHoraires] = useState({});
 
   useEffect(() => {
-    const storedUser = localStorage.getItem('user');
-    if (!storedUser) {
+    const storedUser = JSON.parse(localStorage.getItem('user'));
+    const token = localStorage.getItem('token');
+    if (!token || !storedUser) {
+      Swal.fire({
+        icon: 'warning',
+        title: 'Connexion requise',
+        text: 'Veuillez vous connecter.',
+        toast: true,
+        position: 'top-end',
+        timer: 3000,
+      });
       navigate('/login');
-    } else {
-      const parsedUser = JSON.parse(storedUser);
-      if (parsedUser.role !== 'internaute') {
-        navigate('/profile');
-      }
-      setUser(parsedUser);
-      fetchAppointments();
-      fetchSlots();
-      fetchProfile();
+      return;
     }
+    if (storedUser.role !== 'internaute') {
+      navigate('/profile');
+    }
+    setUser(storedUser);
+    fetchAppointments(token);
+    fetchHoraires(token, storedUser._id);
+    fetchProfile(token);
   }, [navigate]);
 
-  const fetchAppointments = async () => {
+  const fetchAppointments = async (token) => {
     try {
-      const { data } = await axios.get('http://localhost:5000/api/appointments/doctor', {
-        headers: { Authorization: `Bearer ${user?.token}` },
+      const response = await axios.get('http://localhost:5000/api/appointments/doctor', {
+        headers: { Authorization: `Bearer ${token}` },
       });
-      setAppointments(data);
+      setAppointments(response.data || []);
     } catch (err) {
       Swal.fire({
         icon: 'error',
         title: 'Erreur',
-        text: 'Impossible de charger les rendez-vous.',
+        text: err.response?.data?.message || 'Impossible de charger les rendez-vous.',
         toast: true,
         position: 'top-end',
         timer: 3000,
@@ -51,51 +61,215 @@ const DoctorDashboard = () => {
     }
   };
 
-  const fetchSlots = async () => {
+  const fetchHoraires = async (token, doctorId) => {
     try {
-      const { data } = await axios.get('http://localhost:5000/api/slots', {
-        headers: { Authorization: `Bearer ${user?.token}` },
+      const response = await axios.get(`http://localhost:5000/api/auth/schedule/${doctorId}`, {
+        headers: { Authorization: `Bearer ${token}` },
       });
-      setSlots(data.map((slot) => ({
-        title: 'Disponible',
-        start: new Date(slot.start),
-        end: new Date(slot.end),
-      })));
+      setHoraires(response.data.horaires || {});
+      const generatedSlots = generateSlotsFromHoraires(response.data.horaires);
+      setSlots(generatedSlots);
     } catch (err) {
-      console.log('No slots yet.');
+      console.log('Aucun horaire disponible pour le moment:', err);
+      setHoraires({});
+      setSlots([]);
     }
   };
 
-  const fetchProfile = async () => {
+  const generateSlotsFromHoraires = (horaires) => {
+    const slots = [];
+    const today = moment().startOf('day');
+    const daysOfWeek = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche'];
+    const maxSlotsPerDay = 10; // Limiter à 10 créneaux par jour
+
+    for (let i = 0; i < 7; i++) {
+      const currentDay = moment(today).add(i, 'days');
+      const dayName = daysOfWeek[currentDay.day() === 0 ? 6 : currentDay.day() - 1];
+      const horaire = horaires[dayName];
+      let slotCount = 0;
+
+      if (horaire && !horaire.ferme) {
+        const startTime = moment(horaire.ouverture, 'HH:mm');
+        const endTime = moment(horaire.fermeture, 'HH:mm');
+        let currentTime = startTime.clone();
+
+        while (currentTime.isBefore(endTime) && slotCount < maxSlotsPerDay) {
+          const slotStart = moment(currentDay)
+            .set({ hour: currentTime.hour(), minute: currentTime.minute() })
+            .toDate();
+          const slotEnd = moment(slotStart).add(30, 'minutes').toDate();
+
+          const isSlotTaken = appointments.some((appt) => {
+            const apptStart = moment(`${appt.date}T${appt.time}`);
+            return apptStart.isSame(slotStart, 'minute');
+          });
+
+          if (!isSlotTaken) {
+            slots.push({
+              title: 'Disponible',
+              start: slotStart,
+              end: slotEnd,
+            });
+            slotCount++;
+          }
+          currentTime.add(30, 'minutes');
+        }
+      }
+    }
+    return slots;
+  };
+
+  const fetchProfile = async (token) => {
     try {
-      const { data } = await axios.get('http://localhost:5000/api/auth/profile', {
-        headers: { Authorization: `Bearer ${user?.token}` },
+      setIsProfileLoading(true);
+      const response = await axios.get('http://localhost:5000/api/auth/profile', {
+        headers: { Authorization: `Bearer ${token}` },
       });
-      setProfile(data);
+      console.log('Profil après fetch:', response.data);
+      setProfile(response.data || {});
     } catch (err) {
       Swal.fire({
         icon: 'error',
         title: 'Erreur',
-        text: 'Impossible de charger le profil.',
+        text: err.response?.data?.message || 'Impossible de charger le profil.',
         toast: true,
         position: 'top-end',
         timer: 3000,
       });
+    } finally {
+      setIsProfileLoading(false);
     }
   };
 
-  const handleAddSlot = async (start, end) => {
+  const handleAddSlot = async (slotInfo) => {
+    const token = localStorage.getItem('token');
+    if (!token || !user) return;
+
+    const selectedDay = moment(slotInfo.start).format('dddd').toLowerCase();
+    const horaire = horaires[selectedDay];
+
+    if (!horaire || horaire.ferme) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Erreur',
+        text: `Le médecin n'est pas disponible le ${selectedDay}.`,
+        toast: true,
+        position: 'top-end',
+        timer: 3000,
+      });
+      return;
+    }
+
+    const startTime = moment(slotInfo.start);
+    const endTime = moment(slotInfo.end);
+    const horaireStart = moment(horaire.ouverture, 'HH:mm');
+    const horaireEnd = moment(horaire.fermeture, 'HH:mm');
+
+    const startHour = startTime.hour() + startTime.minute() / 60;
+    const endHour = endTime.hour() + endTime.minute() / 60;
+    const horaireStartHour = horaireStart.hour() + horaireStart.minute() / 60;
+    const horaireEndHour = horaireEnd.hour() + horaireEnd.minute() / 60;
+
+    if (startHour < horaireStartHour || endHour > horaireEndHour) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Erreur',
+        text: `Le créneau sélectionné est en dehors des horaires du médecin (${horaire.ouverture} - ${horaire.fermeture}).`,
+        toast: true,
+        position: 'top-end',
+        timer: 3000,
+      });
+      return;
+    }
+
+    const isOverlapping = slots.some((slot) => {
+      const existingStart = moment(slot.start);
+      const existingEnd = moment(slot.end);
+      return startTime.isBefore(existingEnd) && endTime.isAfter(existingStart);
+    }) || appointments.some((appt) => {
+      const apptStart = moment(`${appt.date}T${appt.time}`);
+      const apptEnd = moment(apptStart).add(30, 'minutes');
+      return startTime.isBefore(apptEnd) && endTime.isAfter(apptStart);
+    });
+
+    if (isOverlapping) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Erreur',
+        text: 'Ce créneau chevauche un autre créneau ou rendez-vous.',
+        toast: true,
+        position: 'top-end',
+        timer: 3000,
+      });
+      return;
+    }
+
+    const newSlot = {
+      title: 'Disponible',
+      start: startTime.toDate(),
+      end: endTime.toDate(),
+    };
+    setSlots([...slots, newSlot]);
+    Swal.fire({
+      icon: 'success',
+      title: 'Succès',
+      text: 'Créneau ajouté !',
+      toast: true,
+      position: 'top-end',
+      timer: 3000,
+    });
+  };
+
+  const handleJoinMeeting = (appointment) => {
+    const doctorName = `${user.prenom} ${user.nom}`;
+    const patientName = `${appointment.patientId.prenom} ${appointment.patientId.nom}`;
+    const roomName = `Meeting-${appointment._id.slice(-8)}`;
+    navigate('/meeting', {
+      state: { userName: doctorName, patientName, roomName },
+    });
+
+    const token = localStorage.getItem('token');
+    axios.post(
+      `http://localhost:5000/api/appointments/${appointment._id}/send-meeting-link`,
+      { roomName },
+      { headers: { Authorization: `Bearer ${token}` } }
+    )
+      .then(() => {
+        Swal.fire({
+          icon: 'success',
+          title: 'Succès',
+          text: 'Lien de réunion envoyé au patient.',
+          toast: true,
+          position: 'top-end',
+          timer: 3000,
+        });
+      })
+      .catch((err) => {
+        Swal.fire({
+          icon: 'error',
+          title: 'Erreur',
+          text: err.response?.data?.message || 'Échec de l’envoi du lien de réunion.',
+          toast: true,
+          position: 'top-end',
+          timer: 3000,
+        });
+      });
+  };
+
+  const handleCancelAppointment = async (appointmentId) => {
+    const token = localStorage.getItem('token');
+    if (!token) return;
     try {
-      const { data } = await axios.post(
-        'http://localhost:5000/api/slots',
-        { doctorId: user._id, start, end },
-        { headers: { Authorization: `Bearer ${user?.token}` } }
+      await axios.put(
+        `http://localhost:5000/api/appointments/${appointmentId}/status`,
+        { status: 'cancelled' },
+        { headers: { Authorization: `Bearer ${token}` } }
       );
-      setSlots([...slots, { title: 'Disponible', start: new Date(data.start), end: new Date(data.end) }]);
+      fetchAppointments(token);
       Swal.fire({
         icon: 'success',
         title: 'Succès',
-        text: 'Créneau ajouté !',
+        text: 'Rendez-vous annulé.',
         toast: true,
         position: 'top-end',
         timer: 3000,
@@ -104,12 +278,16 @@ const DoctorDashboard = () => {
       Swal.fire({
         icon: 'error',
         title: 'Erreur',
-        text: 'Impossible d’ajouter le créneau.',
+        text: err.response?.data?.message || 'Impossible d’annuler le rendez-vous.',
         toast: true,
         position: 'top-end',
         timer: 3000,
       });
     }
+  };
+
+  const handleChatbot = () => {
+    navigate('/diagnose');
   };
 
   return (
@@ -124,12 +302,18 @@ const DoctorDashboard = () => {
             <Card style={styles.card}>
               <Card.Body>
                 <h4 style={styles.cardTitle}>Profil</h4>
-                <p><strong>Nom:</strong> {profile.nom} {profile.prenom}</p>
-                <p><strong>Spécialité:</strong> {profile.specialite || 'Non spécifiée'}</p>
-                <p><strong>Vérifié:</strong> {profile.verified ? 'Oui' : 'Non'}</p>
-                <Button variant="primary" href="/profile" style={styles.button}>
-                  Modifier Profil
-                </Button>
+                {isProfileLoading ? (
+                  <p>Chargement...</p>
+                ) : (
+                  <>
+                    <p><strong>Nom:</strong> {profile.nom || 'N/A'} {profile.prenom || ''}</p>
+                    <p><strong>Spécialité:</strong> {profile.specialite || 'Non spécifiée'}</p>
+                    <p><strong>Vérifié:</strong> {profile.validated === true ? 'Validé' : profile.validated === false ? 'Non Validé' : 'Statut inconnu'}</p>
+                    <Button variant="primary" href="/ProfileScreen" style={styles.button}>
+                      Modifier Profil
+                    </Button>
+                  </>
+                )}
               </Card.Body>
             </Card>
           </Col>
@@ -143,16 +327,22 @@ const DoctorDashboard = () => {
                   localizer={localizer}
                   events={slots.concat(
                     appointments.map((appt) => ({
-                      title: `RDV avec ${appt.patientName}`,
-                      start: new Date(appt.slot),
-                      end: new Date(new Date(appt.slot).getTime() + 30 * 60 * 1000),
+                      title: `RDV: ${appt.patientId.nom}`, // Simplifier le titre
+                      start: new Date(appt.date + 'T' + appt.time),
+                      end: new Date(new Date(appt.date + 'T' + appt.time).getTime() + 30 * 60 * 1000),
                     }))
                   )}
                   startAccessor="start"
                   endAccessor="end"
                   style={{ height: 500 }}
-                  onSelectSlot={({ start, end }) => handleAddSlot(start, end)}
+                  onSelectSlot={handleAddSlot}
                   selectable
+                  views={['month', 'week', 'day']}
+                  defaultView="week" // Vue par défaut plus claire
+                  eventPropGetter={(event) => {
+                    let backgroundColor = event.title.startsWith('RDV') ? '#28a745' : '#007bff';
+                    return { style: { backgroundColor, padding: '2px' } };
+                  }}
                 />
               </Card.Body>
             </Card>
@@ -171,20 +361,33 @@ const DoctorDashboard = () => {
                       <th>Patient</th>
                       <th>Date</th>
                       <th>Heure</th>
+                      <th>Statut</th>
                       <th>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
                     {appointments.map((appt) => (
                       <tr key={appt._id}>
-                        <td>{appt.patientName}</td>
-                        <td>{new Date(appt.slot).toLocaleDateString()}</td>
-                        <td>{new Date(appt.slot).toLocaleTimeString()}</td>
+                        <td>{`${appt.patientId.nom} ${appt.patientId.prenom}`}</td>
+                        <td>{new Date(appt.date).toLocaleDateString('fr-FR')}</td>
+                        <td>{appt.time}</td>
+                        <td>{appt.status}</td>
                         <td>
-                          <Button variant="success" size="sm" href={appt.zoomLink || '#'}>
-                            Lancer Consultation
-                          </Button>
-                          <Button variant="danger" size="sm" className="ms-2">
+                          {appt.status === 'confirmed' && (
+                            <Button
+                              variant="success"
+                              size="sm"
+                              onClick={() => handleJoinMeeting(appt)}
+                            >
+                              Lancer Consultation
+                            </Button>
+                          )}
+                          <Button
+                            variant="danger"
+                            size="sm"
+                            className="ms-2"
+                            onClick={() => handleCancelAppointment(appt._id)}
+                          >
                             Annuler
                           </Button>
                         </td>
@@ -197,12 +400,9 @@ const DoctorDashboard = () => {
           </Col>
         </Row>
 
-        {/* Chatbot Placeholder */}
-        <Button
-          style={styles.chatbotButton}
-          onClick={() => alert('Chatbot IA à venir !')}
-        >
-          Discuter avec le Chatbot
+        {/* Chatbot Button */}
+        <Button style={styles.chatbotButton} onClick={handleChatbot}>
+          Diagnostic IA
         </Button>
       </Container>
     </div>
