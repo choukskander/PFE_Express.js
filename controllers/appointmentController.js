@@ -99,7 +99,7 @@ exports.getDoctorAppointments = asyncHandler(async (req, res) => {
 
   const appointments = await Appointment.find({ doctorId })
     .populate('patientId', 'nom prenom email')
-    .sort({ date: 1, time: 1 });
+    .sort({ date: -1, time: -1 });
 
   res.json(appointments);
 });

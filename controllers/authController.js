@@ -210,6 +210,7 @@ exports.getUserProfile = asyncHandler(async (req, res) => {
     profileImage: user.profileImage,
     ville: user.ville,
     localisation: user.localisation,
+    validated: user.validated,
   });
 });
 // Récupérer les spécialités uniques
