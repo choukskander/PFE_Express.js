@@ -3,7 +3,7 @@ import axios from 'axios';
 import Swal from 'sweetalert2';
 import { useNavigate } from 'react-router-dom';
 import { Card, Button, Row, Col, Badge, Table, Dropdown } from 'react-bootstrap';
-import { FaSignOutAlt, FaEye } from 'react-icons/fa';
+import { FaSignOutAlt, FaEye, FaCheck } from 'react-icons/fa';
 import { Chart as ChartJS, BarElement, CategoryScale, LinearScale, Title, Tooltip, Legend, ArcElement } from 'chart.js';
 import { Bar, Pie } from 'react-chartjs-2';
 import { jsPDF } from 'jspdf';
@@ -18,6 +18,7 @@ const AdminDashboard = () => {
   const [users, setUsers] = useState([]);
   const [appointments, setAppointments] = useState([]);
   const [forums, setForums] = useState([]);
+  const [notifications, setNotifications] = useState([]); // État pour les notifications
   const [loading, setLoading] = useState(true);
   const [activeSection, setActiveSection] = useState('dashboard');
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -33,6 +34,7 @@ const AdminDashboard = () => {
   const [currentPageUsers, setCurrentPageUsers] = useState(1);
   const [currentPageAppointments, setCurrentPageAppointments] = useState(1);
   const [currentPageForums, setCurrentPageForums] = useState(1);
+  const [currentPageNotifications, setCurrentPageNotifications] = useState(1); // Pagination pour notifications
   const itemsPerPage = 5;
 
   useEffect(() => {
@@ -64,6 +66,12 @@ const AdminDashboard = () => {
             : [];
         setForums(forumsData);
 
+        // Récupérer les notifications pour les admins
+        const notificationsResponse = await axios.get('http://localhost:5000/api/notifications/admin', {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        setNotifications(Array.isArray(notificationsResponse.data) ? notificationsResponse.data : []);
+
         setLoading(false);
       } catch (err) {
         console.error('Error fetching data:', err);
@@ -71,6 +79,7 @@ const AdminDashboard = () => {
         setUsers([]);
         setAppointments([]);
         setForums([]);
+        setNotifications([]);
         Swal.fire({
           icon: 'error',
           title: 'Erreur',
@@ -102,6 +111,7 @@ const AdminDashboard = () => {
     }).length,
     activeUsers: users.filter((user) => user.validated).length,
     appointments: appointments.filter((appointment) => appointment.status === 'confirmed').length,
+    unreadNotifications: notifications.filter((notification) => !notification.read).length, // Nombre de notifications non lues
   };
 
   const allUsers = users.map((user) => ({
@@ -141,14 +151,17 @@ const AdminDashboard = () => {
   const paginatedUsers = filteredUsers.slice((currentPageUsers - 1) * itemsPerPage, currentPageUsers * itemsPerPage);
   const paginatedAppointments = filteredAppointments.slice((currentPageAppointments - 1) * itemsPerPage, currentPageAppointments * itemsPerPage);
   const paginatedForums = forums.slice((currentPageForums - 1) * itemsPerPage, currentPageForums * itemsPerPage);
+  const paginatedNotifications = notifications.slice((currentPageNotifications - 1) * itemsPerPage, currentPageNotifications * itemsPerPage);
 
   const totalPagesUsers = Math.ceil(filteredUsers.length / itemsPerPage);
   const totalPagesAppointments = Math.ceil(filteredAppointments.length / itemsPerPage);
   const totalPagesForums = Math.ceil(forums.length / itemsPerPage);
+  const totalPagesNotifications = Math.ceil(notifications.length / itemsPerPage);
 
   const handlePageChangeUsers = (newPage) => setCurrentPageUsers(newPage);
   const handlePageChangeAppointments = (newPage) => setCurrentPageAppointments(newPage);
   const handlePageChangeForums = (newPage) => setCurrentPageForums(newPage);
+  const handlePageChangeNotifications = (newPage) => setCurrentPageNotifications(newPage);
 
   const calculateAppointmentsByStatusPerMonth = () => {
     const months = [];
@@ -241,6 +254,29 @@ const AdminDashboard = () => {
     }
   };
 
+  const handleMarkNotificationAsRead = async (notificationId) => {
+    try {
+      const token = localStorage.getItem('token');
+      await axios.put(`http://localhost:5000/api/notifications/admin/${notificationId}/read`, {}, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setNotifications(notifications.map((notification) =>
+        notification._id === notificationId ? { ...notification, read: true } : notification
+      ));
+      showNotification('Notification marquée comme lue');
+    } catch (err) {
+      Swal.fire({
+        icon: 'error',
+        title: 'Erreur',
+        text: err.response?.data?.message || 'Échec de la mise à jour de la notification.',
+        toast: true,
+        position: 'top-end',
+        timer: 3000,
+        timerProgressBar: true,
+      });
+    }
+  };
+
   const handleLogout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
@@ -327,14 +363,17 @@ const AdminDashboard = () => {
 
   return (
     <div style={{ display: 'flex', minHeight: '100vh', backgroundColor: '#f8f9fa' }}>
-      <Sidebar sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} activeSection={activeSection} setActiveSection={setActiveSection} medecins={medecins} patients={patients} admins={admins} appointments={appointments} forums={forums} handleLogout={handleLogout} />
+      <Sidebar sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} activeSection={activeSection} setActiveSection={setActiveSection} medecins={medecins} patients={patients} admins={admins} appointments={appointments} forums={forums} notifications={notifications} handleLogout={handleLogout} />
       <div style={{ marginLeft: sidebarOpen ? '250px' : '80px', transition: 'all 0.3s ease-in-out', flex: 1 }}>
         <header className="bg-white shadow-sm">
           <div className="d-flex justify-content-between align-items-center px-4 py-3">
-            <h1 className="h4 mb-0 text-dark">{activeSection === 'dashboard' && 'Tableau de bord' || activeSection === 'users' && 'Gestion Utilisateurs' || activeSection === 'medecins' && 'Gestion Médecins' || activeSection === 'patients' && 'Gestion Patients' || activeSection === 'admins' && 'Gestion Admins' || activeSection === 'appointments' && 'Gestion RDV' || activeSection === 'forums' && 'Gestion Forums'}</h1>
+            <h1 className="h4 mb-0 text-dark">{activeSection === 'dashboard' && 'Tableau de bord' || activeSection === 'users' && 'Gestion Utilisateurs' || activeSection === 'medecins' && 'Gestion Médecins' || activeSection === 'patients' && 'Gestion Patients' || activeSection === 'admins' && 'Gestion Admins' || activeSection === 'appointments' && 'Gestion RDV' || activeSection === 'forums' && 'Gestion Forums' || activeSection === 'notifications' && 'Notifications'}</h1>
             <div className="d-flex align-items-center">
               <input type="text" placeholder="Rechercher..." className="form-control form-control-sm ps-5" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
-              <Button variant="link" className="p-2"><i className="fas fa-bell text-muted"></i><span className="badge rounded-pill bg-danger text-white">3</span></Button>
+              <Button variant="link" className="p-2" onClick={() => setActiveSection('notifications')}>
+                <i className="fas fa-bell text-muted"></i>
+                <span className="badge rounded-pill bg-danger text-white">{stats.unreadNotifications}</span>
+              </Button>
               <img src="/admin.png" alt="Admin" className="rounded-circle me-2" style={{ width: '40px', height: '40px', objectFit: 'cover' }} onError={(e) => (e.target.src = '/placeholder-profile-image.jpg')} />
               <span className="text-muted">Admin</span>
               <Dropdown><Dropdown.Toggle variant="link" className="p-2" style={{ color: '#6c757d' }}><i className="fas fa-chevron-down text-muted"></i></Dropdown.Toggle><Dropdown.Menu align="end"><Dropdown.Item onClick={handleLogout}><FaSignOutAlt className="me-2" />Déconnexion</Dropdown.Item></Dropdown.Menu></Dropdown>
@@ -346,8 +385,16 @@ const AdminDashboard = () => {
         <main className="p-4">
           {activeSection === 'dashboard' && (
             <>
-              <Row className="mb-4"><Col lg={3} md={6} className="mb-4"><Card className="shadow-sm"><Card.Body className="d-flex align-items-center"><div className="p-3 rounded-circle bg-primary bg-opacity-10 text-primary me-3"><i className="fas fa-users fs-4"></i></div><div><Card.Text className="text-muted mb-1">Total Utilisateurs</Card.Text><Card.Title className="h5 mb-0">{stats.totalUsers}</Card.Title></div></Card.Body></Card></Col><Col lg={3} md={6} className="mb-4"><Card className="shadow-sm"><Card.Body className="d-flex align-items-center"><div className="p-3 rounded-circle bg-success bg-opacity-10 text-success me-3"><i className="fas fa-user-plus fs-4"></i></div><div><Card.Text className="text-muted mb-1">Nouveaux Utilisateurs</Card.Text><Card.Title className="h5 mb-0">{stats.newUsers}</Card.Title></div></Card.Body></Card></Col><Col lg={3} md={6} className="mb-4"><Card className="shadow-sm"><Card.Body className="d-flex align-items-center"><div className="p-3 rounded-circle bg-purple bg-opacity-10 text-purple me-3"><i className="fas fa-user-check fs-4"></i></div><div><Card.Text className="text-muted mb-1">Utilisateurs Actifs</Card.Text><Card.Title className="h5 mb-0">{stats.activeUsers}</Card.Title></div></Card.Body></Card></Col><Col lg={3} md={6} className="mb-4"><Card className="shadow-sm"><Card.Body className="d-flex align-items-center"><div className="p-3 rounded-circle bg-warning bg-opacity-10 text-warning me-3"><i className="fas fa-calendar-check fs-4"></i></div><div><Card.Text className="text-muted mb-1">Rendez-vous en cours</Card.Text><Card.Title className="h5 mb-0">{stats.appointments}</Card.Title></div></Card.Body></Card></Col></Row>
-              <Row className="mb-4"><Col lg={8} className="mb-4"><Card className="shadow-sm"><Card.Body><div style={{ height: '300px', width: '100%' }}><Bar data={barChartData} options={barChartOptions} /></div><div style={{ height: '300px', width: '100%', marginTop: '20px' }}><Pie data={pieChartData} options={pieChartOptions} /></div></Card.Body></Card></Col><Col lg={4}><Card className="shadow-sm"><Card.Body><h5>Filtres</h5><div className="mb-4"><label>Statut</label><div className="d-flex gap-2">{['Tous', 'Actifs', 'Inactifs'].map((filter) => <Button key={filter} variant={statusFilter === filter ? 'primary' : 'outline-secondary'} size="sm" onClick={() => setStatusFilter(filter)}>{filter}</Button>)}</div></div><div className="mb-4"><label>Type de compte</label><select className="form-select form-select-sm" value={userTypeFilter} onChange={(e) => setUserTypeFilter(e.target.value)}><option value="Tous">Tous</option><option value="Patient">Patient</option><option value="Médecin">Médecin</option><option value="Admin">Admin</option></select></div><div><label>Exporter</label><div className="d-flex gap-2"><Button variant="outline-secondary" size="sm" onClick={exportToCSV}><i className="fas fa-file-csv me-2"></i>CSV</Button><Button variant="outline-secondary" size="sm" onClick={exportToPDF}><i className="fas fa-file-pdf me-2"></i>PDF</Button></div></div></Card.Body></Card></Col></Row>
+              <Row className="mb-4">
+                <Col lg={3} md={6} className="mb-4"><Card className="shadow-sm"><Card.Body className="d-flex align-items-center"><div className="p-3 rounded-circle bg-primary bg-opacity-10 text-primary me-3"><i className="fas fa-users fs-4"></i></div><div><Card.Text className="text-muted mb-1">Total Utilisateurs</Card.Text><Card.Title className="h5 mb-0">{stats.totalUsers}</Card.Title></div></Card.Body></Card></Col>
+                <Col lg={3} md={6} className="mb-4"><Card className="shadow-sm"><Card.Body className="d-flex align-items-center"><div className="p-3 rounded-circle bg-success bg-opacity-10 text-success me-3"><i className="fas fa-user-plus fs-4"></i></div><div><Card.Text className="text-muted mb-1">Nouveaux Utilisateurs</Card.Text><Card.Title className="h5 mb-0">{stats.newUsers}</Card.Title></div></Card.Body></Card></Col>
+                <Col lg={3} md={6} className="mb-4"><Card className="shadow-sm"><Card.Body className="d-flex align-items-center"><div className="p-3 rounded-circle bg-purple bg-opacity-10 text-purple me-3"><i className="fas fa-user-check fs-4"></i></div><div><Card.Text className="text-muted mb-1">Utilisateurs Actifs</Card.Text><Card.Title className="h5 mb-0">{stats.activeUsers}</Card.Title></div></Card.Body></Card></Col>
+                <Col lg={3} md={6} className="mb-4"><Card className="shadow-sm"><Card.Body className="d-flex align-items-center"><div className="p-3 rounded-circle bg-warning bg-opacity-10 text-warning me-3"><i className="fas fa-calendar-check fs-4"></i></div><div><Card.Text className="text-muted mb-1">Rendez-vous en cours</Card.Text><Card.Title className="h5 mb-0">{stats.appointments}</Card.Title></div></Card.Body></Card></Col>
+              </Row>
+              <Row className="mb-4">
+                <Col lg={8} className="mb-4"><Card className="shadow-sm"><Card.Body><div style={{ height: '300px', width: '100%' }}><Bar data={barChartData} options={barChartOptions} /></div><div style={{ height: '300px', width: '100%', marginTop: '20px' }}><Pie data={pieChartData} options={pieChartOptions} /></div></Card.Body></Card></Col>
+                <Col lg={4}><Card className="shadow-sm"><Card.Body><h5>Filtres</h5><div className="mb-4"><label>Statut</label><div className="d-flex gap-2">{['Tous', 'Actifs', 'Inactifs'].map((filter) => <Button key={filter} variant={statusFilter === filter ? 'primary' : 'outline-secondary'} size="sm" onClick={() => setStatusFilter(filter)}>{filter}</Button>)}</div></div><div className="mb-4"><label>Type de compte</label><select className="form-select form-select-sm" value={userTypeFilter} onChange={(e) => setUserTypeFilter(e.target.value)}><option value="Tous">Tous</option><option value="Patient">Patient</option><option value="Médecin">Médecin</option><option value="Admin">Admin</option></select></div><div><label>Exporter</label><div className="d-flex gap-2"><Button variant="outline-secondary" size="sm" onClick={exportToCSV}><i className="fas fa-file-csv me-2"></i>CSV</Button><Button variant="outline-secondary" size="sm" onClick={exportToPDF}><i className="fas fa-file-pdf me-2"></i>PDF</Button></div></div></Card.Body></Card></Col>
+              </Row>
             </>
           )}
 
@@ -450,6 +497,54 @@ const AdminDashboard = () => {
                     <Button variant="outline-secondary" size="sm" onClick={() => handlePageChangeForums(currentPageForums - 1)} disabled={currentPageForums === 1}>Précédent</Button>
                     <Button variant="primary" size="sm">{currentPageForums}</Button>
                     <Button variant="outline-secondary" size="sm" onClick={() => handlePageChangeForums(currentPageForums + 1)} disabled={currentPageForums === totalPagesForums}>Suivant</Button>
+                  </div>
+                </div>
+              </Card.Body>
+            </Card>
+          )}
+
+          {activeSection === 'notifications' && (
+            <Card className="shadow-sm">
+              <Card.Body>
+                <div className="d-flex justify-content-between align-items-center mb-4">
+                  <h5>Notifications</h5>
+                </div>
+                <div className="table-responsive">
+                  <Table striped bordered hover>
+                    <thead><tr><th>Message</th><th>Médecin</th><th>Date</th><th>Statut</th><th>Actions</th></tr></thead>
+                    <tbody>
+                      {paginatedNotifications.length === 0 ? (
+                        <tr><td colSpan="5" className="text-center text-muted">Aucune notification</td></tr>
+                      ) : (
+                        paginatedNotifications.map((notification) => (
+                          <tr key={notification._id}>
+                            <td>{notification.message}</td>
+                            <td>{notification.doctorId ? `${notification.doctorId.nom} ${notification.doctorId.prenom}` : 'Inconnu'}</td>
+                            <td>{new Date(notification.createdAt).toLocaleDateString('fr-FR')}</td>
+                            <td><Badge bg={notification.read ? 'success' : 'warning'}>{notification.read ? 'Lue' : 'Non Lue'}</Badge></td>
+                            <td>
+                              {!notification.read && (
+                                <Button
+                                  variant="link"
+                                  className="text-success p-1"
+                                  onClick={() => handleMarkNotificationAsRead(notification._id)}
+                                >
+                                  <FaCheck />
+                                </Button>
+                              )}
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </Table>
+                </div>
+                <div className="d-flex justify-content-between align-items-center border-top pt-3">
+                  <span className="text-muted">Affichage {((currentPageNotifications - 1) * itemsPerPage) + 1} à {Math.min(currentPageNotifications * itemsPerPage, notifications.length)} sur {notifications.length}</span>
+                  <div className="d-flex gap-2">
+                    <Button variant="outline-secondary" size="sm" onClick={() => handlePageChangeNotifications(currentPageNotifications - 1)} disabled={currentPageNotifications === 1}>Précédent</Button>
+                    <Button variant="primary" size="sm">{currentPageNotifications}</Button>
+                    <Button variant="outline-secondary" size="sm" onClick={() => handlePageChangeNotifications(currentPageNotifications + 1)} disabled={currentPageNotifications === totalPagesNotifications}>Suivant</Button>
                   </div>
                 </div>
               </Card.Body>
