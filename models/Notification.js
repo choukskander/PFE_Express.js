@@ -12,13 +12,12 @@ const notificationSchema = new mongoose.Schema({
   },
   type: {
     type: String,
-    enum: ['appointment_booked', 'status_updated', 'meeting_link'],
+    enum: ['doctor_validation', 'appointment_booked', 'status_updated', 'meeting_link'],
     required: true,
   },
-  appointmentId: {
+  doctorId: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'Appointment',
-    required: true,
+    ref: 'User',
   },
   read: {
     type: Boolean,

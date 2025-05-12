@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 const User = require("../models/User");
+const Notification = require('../models/Notification'); // Added Notification model
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
 const cloudinary = require('cloudinary').v2;
@@ -24,7 +25,6 @@ cloudinary.config({
 const generateToken = (id) => {
   return jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: "1h" });
 };
-
 
 exports.register = asyncHandler(async (req, res) => {
   console.log("Register - Request body:", req.body, "Files:", req.files);
@@ -82,9 +82,24 @@ exports.register = asyncHandler(async (req, res) => {
     role,
     specialite: role === "internaute" ? specialite : undefined,
     licenceProfessionnelle: licencePath,
+    validated: role === "admin" ? true : false, // Admins are validated by default, others (e.g., doctors) are not
   });
 
   await newUser.save();
+
+  // Create notification for admins if the new user is a doctor (internaute)
+  if (newUser.role === "internaute") {
+    const admins = await User.find({ role: "admin" });
+    for (const admin of admins) {
+      await Notification.create({
+        recipientId: admin._id,
+        message: `Nouveau médecin en attente de validation : ${newUser.nom} ${newUser.prenom}`,
+        type: "doctor_validation",
+        doctorId: newUser._id,
+        read: false,
+      });
+    }
+  }
 
   const token = generateToken(newUser._id);
 
@@ -193,6 +208,7 @@ exports.updateUserProfile = asyncHandler(async (req, res) => {
     localisation: updatedUser.localisation,
   });
 });
+
 // Récupérer les users profil
 exports.getUserProfile = asyncHandler(async (req, res) => {
   const user = await User.findById(req.user.id);
@@ -537,7 +553,6 @@ exports.bookAppointment = asyncHandler(async (req, res) => {
 });
 // **************************Admin
 
-
 // Récupérer tous les comptes (pour admin uniquement)
 exports.getAllUsers = asyncHandler(async (req, res) => {
   console.log('Admin requesting all users');
@@ -595,30 +610,6 @@ exports.deleteUser = asyncHandler(async (req, res) => {
   console.log('User deleted:', userId);
   res.status(200).json({ message: 'Utilisateur supprimé avec succès.' });
 });
-
-// Valider la licence d’un médecin (pour admin uniquement)
-// exports.validateDoctorLicense = asyncHandler(async (req, res) => {
-//   const { userId } = req.params;
-//   console.log('Admin validating doctor license for userId:', userId);
-
-//   const user = await User.findById(userId);
-//   if (!user) {
-//     console.log('User not found for ID:', userId);
-//     return res.status(404).json({ message: 'Utilisateur non trouvé.' });
-//   }
-
-//   if (user.role !== 'internaute') {
-//     console.log('User is not a doctor. Role:', user.role);
-//     return res.status(400).json({ message: 'Cet utilisateur n’est pas un médecin.' });
-//   }
-
-//   user.validated = true;
-//   user.updatedAt = Date.now();
-//   await user.save();
-
-//   console.log('Doctor license validated:', user);
-//   res.status(200).json({ message: 'Licence du médecin validée avec succès.', user });
-// });
 
 // Valider la licence d’un médecin (pour admin uniquement)
 exports.validateDoctorLicense = asyncHandler(async (req, res) => {
