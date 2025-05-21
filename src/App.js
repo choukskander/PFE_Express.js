@@ -26,6 +26,7 @@ import 'antd/dist/reset.css';
 import ForumList from "./components/ForumList";
 import ForumResponse from "./components/ForumResponse";
 import ForumResponses from "./components/ForumResponses";
+import DiagnosticIA from './pages/DiagnosticIA';
 
 function App() {
   return (
@@ -52,6 +53,7 @@ function App() {
           <Route path="/forum/:id" element={<ForumResponse />} />
           <Route path="/forum-responses/:forumId" element={<ForumResponses />} />
           <Route path="/admin-dashboard" element={<AdminDashboard />} />
+          <Route path="/diagnostic-ia" element={<DiagnosticIA />} />
           <Route path="*" element={<ErrorPage />} />
         </Routes>
       </Router>
