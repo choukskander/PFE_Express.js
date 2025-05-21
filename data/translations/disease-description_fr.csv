@@ -1,0 +1,42 @@
+maladie,description
+Réaction_médicamenteuse,Une réaction médicamenteuse indésirable (RMI) est une blessure causée par la prise de médicaments. Les RMI peuvent survenir après une seule dose ou une administration prolongée d'un médicament ou résulter de la combinaison de deux ou plusieurs médicaments.
+Paludisme,Une maladie infectieuse causée par des parasites protozoaires de la famille des Plasmodium qui peuvent être transmis par la piqûre d'un moustique Anopheles ou par une aiguille contaminée ou une transfusion. Le paludisme à falciparum est le type le plus mortel.
+Allergie,Une réaction allergique est une réponse exagérée du système immunitaire à une substance étrangère généralement inoffensive, comme le pollen, les poils d'animaux ou certains aliments.
+Hypothyroïdie,Une condition dans laquelle la glande thyroïde ne produit pas suffisamment d'hormones thyroïdiennes, entraînant un métabolisme ralenti, fatigue, prise de poids et sensibilité au froid.
+Psoriasis,Une maladie auto-immune chronique de la peau qui provoque une accumulation rapide de cellules cutanées, entraînant des plaques rouges et squameuses, souvent accompagnées de démangeaisons.
+RGO,Le reflux gastro-œsophagien (RGO) est une condition chronique où l'acide gastrique remonte dans l'œsophage, causant des brûlures d'estomac et une gêne.
+Cholestase_chronique,Une réduction ou un arrêt du flux de bile de la vésicule biliaire ou du foie, souvent due à des obstructions ou des maladies hépatiques, entraînant des démangeaisons et une jaunisse.
+Hépatite_A,Une infection virale aiguë du foie causée par le virus de l'hépatite A, souvent transmise par de l'eau ou des aliments contaminés, provoquant jaunisse et fatigue.
+Ostéoarthrite,Une forme d'arthrite qui résulte de l'usure du cartilage et des os dans les articulations, causant douleur et raideur, surtout chez les personnes âgées.
+Vertige_positionnel_paroxystique,Un trouble de l'oreille interne provoquant des vertiges brefs et intenses, souvent déclenché par des changements de position de la tête.
+Hypoglycémie,Une baisse dangereuse du taux de sucre dans le sang, pouvant causer des tremblements, confusion et, dans les cas graves, perte de conscience.
+Acné,Une affection cutanée courante liée à l'excès de sébum et aux bactéries, provoquant des boutons, points noirs et pustules, surtout sur le visage.
+Diabète,Une maladie métabolique caractérisée par un taux élevé de sucre dans le sang dû à une insuffisance d'insuline ou à une mauvaise utilisation par le corps.
+Impétigo,Une infection bactérienne superficielle de la peau, souvent causée par Staphylococcus ou Streptococcus, entraînant des cloques et des croûtes jaunâtres.
+Hypertension,Une pression artérielle constamment élevée qui peut endommager les organes au fil du temps, augmentant le risque de maladies cardiaques.
+Ulcère_gastrique,Une lésion dans la muqueuse de l'estomac ou du duodénum, souvent liée à une infection par Helicobacter pylori ou à l'usage excessif d'anti-inflammatoires.
+Hémorroïdes_dimorphiques,Une condition où les veines autour de l'anus ou du rectum deviennent enflées, causant douleur et saignements, surtout lors des selles.
+Rhume_commun,Une infection virale des voies respiratoires supérieures, provoquant toux, écoulement nasal et fatigue, généralement bénigne mais contagieuse.
+Varicelle,Une infection virale hautement contagieuse causée par le virus varicelle-zona, entraînant une éruption cutanée avec des vésicules prurigineuses.
+Spondylose_cervicale,Une dégénérescence des vertèbres cervicales et des disques intervertébraux due au vieillissement, provoquant douleur et raideur du cou.
+Hyperthyroïdie,Une condition où la glande thyroïde produit trop d'hormones, accélérant le métabolisme et causant perte de poids, nervosité et transpiration.
+Infection_urinaire,Une infection des voies urinaires, souvent causée par des bactéries comme E. coli, entraînant brûlures en urinant et besoin fréquent d'uriner.
+Varices,Une dilatation anormale des veines, souvent dans les jambes, due à une mauvaise circulation sanguine, provoquant douleur et gonflement.
+SIDA,Un syndrome immunitaire causé par le VIH, qui affaiblit progressivement le système immunitaire, rendant le corps vulnérable aux infections.
+Paralysie,La perte partielle ou totale de la fonction musculaire, souvent due à des lésions nerveuses ou des accidents vasculaires cérébraux.
+Typhoïde,Une infection bactérienne systémique causée par Salmonella typhi, transmise par de l'eau ou des aliments contaminés, provoquant fièvre et fatigue.
+Hépatite_B,Une infection virale du foie causée par le virus de l'hépatite B, pouvant devenir chronique et entraîner des lésions hépatiques graves.
+Infection_fongique,Une infection cutanée ou systémique causée par des champignons, souvent favorisée par un environnement humide, provoquant démangeaisons et éruptions.
+Hépatite_C,Une infection virale du foie, souvent chronique, causée par le virus de l'hépatite C, pouvant évoluer vers une cirrhose ou un cancer du foie.
+Migraine,Un type de mal de tête sévère, souvent accompagné de nausées et de sensibilité à la lumière, pouvant durer plusieurs heures ou jours.
+Asthme_bronchique,Une maladie respiratoire chronique caractérisée par un rétrécissement des voies aériennes, provoquant essoufflement et sifflements.
+Hépatite_alcoolique,Une inflammation du foie due à une consommation excessive d'alcool sur une longue période, pouvant mener à une insuffisance hépatique.
+Jaunisse,Une condition où la peau et les yeux jaunissent due à une accumulation de bilirubine, souvent liée à des problèmes hépatiques ou biliaires.
+Hépatite_E,Une infection virale aiguë du foie, généralement transmise par l'eau contaminée, provoquant jaunisse et fatigue, souvent auto-limitée.
+Dengue,Une maladie virale transmise par les moustiques Aedes, provoquant fièvre élevée, douleurs articulaires et éruptions cutanées, parfois grave.
+Hépatite_D,Une infection virale du foie qui nécessite la présence de l'hépatite B pour se développer, aggravant les lésions hépatiques.
+Crise_cardiaque,Un arrêt soudain du flux sanguin vers une partie du cœur, causant des douleurs thoraciques et nécessitant une intervention immédiate.
+Pneumonie,Une infection des poumons, souvent bactérienne ou virale, provoquant toux, fièvre et difficultés respiratoires.
+Arthrite,Une inflammation des articulations, causant douleur et raideur, pouvant résulter de diverses causes comme l'usure ou l'auto-immunité.
+Gastroentérite,Une inflammation de l'estomac et des intestins, souvent virale, provoquant vomissements, diarrhée et déshydratation.
+Tuberculose,Une infection bactérienne causée par Mycobacterium tuberculosis, affectant principalement les poumons, avec toux persistante et perte de poids.

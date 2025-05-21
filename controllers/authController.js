@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 const User = require("../models/User");
-const Notification = require('../models/Notification'); // Added Notification model
+const Notification = require('../models/Notification'); 
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
 const cloudinary = require('cloudinary').v2;

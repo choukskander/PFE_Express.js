@@ -11,12 +11,11 @@ dotenv.config();
 const app = express();
 app.use(express.json());
 app.use(fileUpload({
-  useTempFiles: true, // Store files on disk
-  tempFileDir: path.join(__dirname, 'Uploads'), // Ensure folder exists
-  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
+  useTempFiles: true,
+  tempFileDir: path.join(__dirname, 'Uploads'),
+  limits: { fileSize: 5 * 1024 * 1024 },
   abortOnLimit: true
 }));
-// CORS Middleware
 app.use(cors({
   origin: 'http://localhost:3000',
   credentials: true,
@@ -34,6 +33,9 @@ mongoose
 app.use("/api/auth", require("./routes/authRoutes"));
 app.use("/api/appointments", require("./routes/appointmentRoutes"));
 app.use('/api/forum', require('./routes/forumRoutes'));
+app.use('/api/notifications', notificationRoutes);
+app.use("/api", require("./routes/diagnosticRoutes")); // Ajout des routes de diagnostic
+
 app.get('/test-email', async (req, res) => {
   try {
     const sendEmail = require('./utils/sendEmail');
@@ -49,12 +51,10 @@ app.get('/test-email', async (req, res) => {
   }
 });
 
-app.use('/api/notifications', notificationRoutes);
-
 app.get("/", (req, res) => {
   res.send("Bienvenue sur la plateforme de prise de rendez-vous médicaux !");
 });
 
 // Lancement du serveur
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`🚀 Serveur en ligne sur le port ${PORT}`));
+app.listen(PORT, () => console.log(`🚀 Serveur en ligne sur le port ${PORT} à ${new Date().toLocaleString('fr-FR', { timeZone: 'CET' })}`));
