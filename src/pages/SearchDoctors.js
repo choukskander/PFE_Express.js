@@ -7,7 +7,6 @@ import { Calendar, dateFnsLocalizer } from 'react-big-calendar';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
 import { format, parse, startOfWeek, getDay, addMinutes, setHours, setMinutes, addDays, isBefore } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 
@@ -40,7 +39,10 @@ const SearchDoctors = () => {
   const [coordinates, setCoordinates] = useState(null);
   const [mapLoading, setMapLoading] = useState(false);
   const [mapError, setMapError] = useState(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isAppointmentModalOpen, setIsAppointmentModalOpen] = useState(false);
   const mapContainerRef = useRef(null);
+  const mapRef = useRef(null);
 
   // Fix Leaflet marker icon issue
   useEffect(() => {
@@ -50,6 +52,48 @@ const SearchDoctors = () => {
       iconUrl: 'https://unpkg.com/leaflet@1.9.3/dist/images/marker-icon.png',
       shadowUrl: 'https://unpkg.com/leaflet@1.9.3/dist/images/marker-shadow.png',
     });
+  }, []);
+
+  // Initialize or update the map when coordinates and modal state change
+  useEffect(() => {
+    if (isModalOpen && coordinates && !mapError && mapContainerRef.current) {
+      if (!mapRef.current) {
+        mapRef.current = L.map(mapContainerRef.current).setView(coordinates, 13);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          attribution: '© OpenStreetMap contributors',
+        }).addTo(mapRef.current);
+        L.marker(coordinates)
+          .addTo(mapRef.current)
+          .bindPopup(`Cabinet de Dr. ${selectedDoctor?.nom || ''}`)
+          .openPopup();
+      } else {
+        mapRef.current.setView(coordinates, 13);
+        mapRef.current.removeLayer(mapRef.current.getLayers().find(layer => layer instanceof L.Marker));
+        L.marker(coordinates)
+          .addTo(mapRef.current)
+          .bindPopup(`Cabinet de Dr. ${selectedDoctor?.nom || ''}`)
+          .openPopup();
+      }
+      setTimeout(() => {
+        if (mapRef.current) {
+          mapRef.current.invalidateSize();
+        }
+      }, 100);
+    }
+  }, [isModalOpen, coordinates, mapError, selectedDoctor]);
+
+  // Cleanup map on component unmount or modal close
+  useEffect(() => {
+    return () => {
+      if (mapRef.current) {
+        mapRef.current.remove();
+        mapRef.current = null;
+      }
+      if (mapContainerRef.current) {
+        mapContainerRef.current.remove();
+        mapContainerRef.current = null;
+      }
+    };
   }, []);
 
   // Charger les spécialités dynamiquement depuis le backend
@@ -206,16 +250,13 @@ const SearchDoctors = () => {
     }
   };
 
-  const showDoctorDetails = (doctor) => {
-    // Reset coordinates and map state
+  const showDoctorDetails = async (doctor) => {
     setCoordinates(null);
-    setMapLoading(false);
+    setMapLoading(true);
     setMapError(null);
+    setSelectedDoctor(doctor);
+    setIsModalOpen(true);
 
-    // Fetch coordinates for the doctor's location
-    fetchCoordinates(doctor.localisation);
-
-    // Create a container for the map
     const mapContainer = document.createElement('div');
     mapContainer.id = 'map-container';
     mapContainer.style.height = '300px';
@@ -223,8 +264,10 @@ const SearchDoctors = () => {
     mapContainer.style.borderRadius = '8px';
     mapContainer.style.overflow = 'hidden';
     mapContainer.style.marginTop = '16px';
+    mapContainerRef.current = mapContainer;
 
-    // Show the SweetAlert modal
+    await fetchCoordinates(doctor.localisation);
+
     Swal.fire({
       title: `Dr. ${doctor.prenom} ${doctor.nom}`,
       html: `
@@ -232,43 +275,30 @@ const SearchDoctors = () => {
           <p><strong>Spécialité:</strong> ${doctor.specialite}</p>
           <p><strong>Ville:</strong> ${doctor.ville}</p>
           <p><strong>Localisation:</strong> ${doctor.localisation}</p>
-          <div id="map-placeholder"></div>
+          <div id="map-placeholder">
+            ${mapLoading ? '<p>Chargement de la carte...</p>' : ''}
+            ${mapError ? `<p style="color: red;">${mapError}</p>` : ''}
+          </div>
         </div>
       `,
       icon: 'info',
       confirmButtonText: 'Fermer',
       didOpen: () => {
-        // Append the map container to the placeholder
         const placeholder = document.getElementById('map-placeholder');
-        placeholder.appendChild(mapContainer);
-        mapContainerRef.current = mapContainer;
-
-        // Ensure the map is updated after coordinates are fetched
-        if (coordinates && !mapError) {
-          const map = L.map(mapContainer).setView(coordinates, 13);
-          L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '© OpenStreetMap contributors',
-          }).addTo(map);
-          L.marker(coordinates).addTo(map).bindPopup(`Cabinet de Dr. ${doctor.nom}`).openPopup();
-        }
+        placeholder.appendChild(mapContainerRef.current);
       },
       willClose: () => {
-        // Cleanup map container
+        setIsModalOpen(false);
+        if (mapRef.current) {
+          mapRef.current.remove();
+          mapRef.current = null;
+        }
         if (mapContainerRef.current) {
           mapContainerRef.current.remove();
           mapContainerRef.current = null;
         }
       },
     });
-
-    // Update map when coordinates change
-    if (coordinates && !mapError && mapContainerRef.current) {
-      const map = L.map(mapContainerRef.current).setView(coordinates, 13);
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '© OpenStreetMap contributors',
-      }).addTo(map);
-      L.marker(coordinates).addTo(map).bindPopup(`Cabinet de Dr. ${doctor.nom}`).openPopup();
-    }
   };
 
   const handleBookAppointment = async (doctor) => {
@@ -312,7 +342,7 @@ const SearchDoctors = () => {
       });
       setHoraires(response.data.horaires);
       setSelectedDoctor(doctor);
-
+      setIsAppointmentModalOpen(true);
       const slots = generateAvailableSlots(response.data.horaires);
       setAvailableSlots(slots);
     } catch (err) {
@@ -433,6 +463,7 @@ const SearchDoctors = () => {
       setSelectedDoctor(null);
       setHoraires(null);
       setAvailableSlots([]);
+      setIsAppointmentModalOpen(false);
     } catch (err) {
       console.error('Erreur lors de la prise de rendez-vous:', err);
       Swal.fire({
@@ -464,7 +495,7 @@ const SearchDoctors = () => {
           <div className="container mx-auto px-4 py-16 md:py-24 relative z-10">
             <h2 className="text-3xl font-bold text-blue-600 text-center mb-6">Rechercher des Médecins</h2>
             <div className="bg-white p-6 rounded-xl shadow-lg max-w-4xl mx-auto">
-              <form onSubmit={(e) => handleSearch(e, false)} className="flex flex-col md:flex-row gap-4 items-center">
+              <form onSubmit={(e) => handleSearch(e, false)} className="flex flex-col md:flex-row gap-4 items-center justify-between">
                 <div className="flex-1">
                   <label htmlFor="nom" className="block text-sm font-semibold text-gray-800 mb-1">
                     Nom du médecin
@@ -473,10 +504,10 @@ const SearchDoctors = () => {
                     <input
                       id="nom"
                       type="text"
-                      placeholder="Entrez le nom ou prénom"
+                      placeholder="   Entrez le nom ou prénom"
                       value={nom}
                       onChange={(e) => setNom(e.target.value)}
-                      className="w-full p-3 pl-16 rounded-lg border border-gray-300 focus:ring-blue-500 focus:border-blue-500 placeholder-gray-500"
+                      className="w-full p-3 pl-10 rounded-lg border border-gray-300 focus:ring-blue-500 focus:border-blue-500 placeholder-gray-500"
                       aria-describedby={formErrors.nom ? 'nom-error' : undefined}
                     />
                     <i className="fas fa-user-md absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-300"></i>
@@ -494,7 +525,7 @@ const SearchDoctors = () => {
                       id="specialite"
                       value={specialite}
                       onChange={(e) => setSpecialite(e.target.value)}
-                      className="w-full p-3 pl-16 rounded-lg border border-gray-300 focus:ring-blue-500 focus:border-blue-500 appearance-none text-gray-500"
+                      className="w-full p-3 pl-10 rounded-lg border border-gray-300 focus:ring-blue-500 focus:border-blue-500 appearance-none text-gray-500"
                       aria-describedby={formErrors.specialite ? 'specialite-error' : undefined}
                     >
                       {specialites.map((spec) => (
@@ -517,10 +548,10 @@ const SearchDoctors = () => {
                     <input
                       id="ville"
                       type="text"
-                      placeholder="Entrez la ville (ex. Tunis)"
+                      placeholder="   Entrez la ville (ex. Tunis)"
                       value={ville}
                       onChange={(e) => setVille(e.target.value)}
-                      className="w-full p-3 pl-16 rounded-lg border border-gray-300 focus:ring-blue-500 focus:border-blue-500 placeholder-gray-500"
+                      className="w-full p-3 pl-10 rounded-lg border border-gray-300 focus:ring-blue-500 focus:border-blue-500 placeholder-gray-500"
                       aria-describedby={formErrors.ville ? 'ville-error' : undefined}
                     />
                     <i className="fas fa-map-marker-alt absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-300"></i>
@@ -531,7 +562,7 @@ const SearchDoctors = () => {
                 </div>
                 <button
                   type="submit"
-                  className="mt-6 md:mt-0 bg-blue-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-blue-700 transition-colors disabled:bg-blue-400"
+                  className="mt-4 md:mt-0 bg-blue-600 text-white py-3 px-6 rounded-lg font-semibold hover:bg-blue-700 transition-colors"
                   disabled={isLoading}
                 >
                   <i className="fas fa-search mr-2"></i>
@@ -577,8 +608,7 @@ const SearchDoctors = () => {
         </section>
       </main>
 
-      {/* Modale pour prendre un rendez-vous */}
-      {selectedDoctor && (
+      {selectedDoctor && isAppointmentModalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white p-6 rounded-lg shadow-lg max-w-4xl w-full">
             <h3 className="text-xl font-semibold mb-4">
@@ -586,7 +616,7 @@ const SearchDoctors = () => {
             </h3>
             <div className="mb-4">
               {availableSlots.length === 0 ? (
-                <p className="text-center text-gray-600">
+                <p className="text-center text-gray-500">
                   Aucun créneau disponible pour cette période.
                 </p>
               ) : (
@@ -621,6 +651,7 @@ const SearchDoctors = () => {
                   setSelectedDoctor(null);
                   setHoraires(null);
                   setAvailableSlots([]);
+                  setIsAppointmentModalOpen(false);
                 }}
                 className="flex-1 bg-gray-300 text-gray-800 py-2 rounded-lg font-semibold hover:bg-gray-400"
               >
