@@ -9,8 +9,8 @@ const {
 } = require('../controllers/notificationController');
 
 // Routes pour les médecins (internaute)
-router.get('/doctor', authMiddleware, getDoctorNotifications);
-router.put('/doctor/:notificationId/read', authMiddleware, markNotificationAsRead);
+router.get('/', authMiddleware, getDoctorNotifications);
+router.put('/:notificationId/read', authMiddleware, markNotificationAsRead);
 
 // Routes pour les admins
 router.get('/admin', [authMiddleware, adminMiddleware], getAdminNotifications);

@@ -173,16 +173,18 @@ exports.updateAppointmentStatus = asyncHandler(async (req, res) => {
     return res.status(400).json({ message: 'Statut invalide. Les valeurs possibles sont : pending, confirmed, cancelled.' });
   }
 
-  // Rechercher le rendez-vous et peupler les informations du patient
-  const appointment = await Appointment.findById(appointmentId).populate('patientId', 'nom prenom email');
+  // Rechercher le rendez-vous et peupler les informations du patient ET du médecin
+  const appointment = await Appointment.findById(appointmentId)
+    .populate('patientId', 'nom prenom email') // Peupler les informations du patient
+    .populate('doctorId', 'nom prenom email'); // Peupler les informations du médecin
   if (!appointment) {
     console.log('Appointment not found for ID:', appointmentId);
     return res.status(404).json({ message: 'Rendez-vous non trouvé.' });
   }
 
   // Vérifier que le rendez-vous appartient au médecin authentifié
-  if (appointment.doctorId.toString() !== doctorId) {
-    console.log('Appointment does not belong to doctor:', { appointmentDoctorId: appointment.doctorId, doctorId });
+  if (appointment.doctorId._id.toString() !== doctorId) {
+    console.log('Appointment does not belong to doctor:', { appointmentDoctorId: appointment.doctorId._id, doctorId });
     return res.status(403).json({ message: 'Accès refusé. Vous ne pouvez modifier que vos propres rendez-vous.' });
   }
 
@@ -194,12 +196,13 @@ exports.updateAppointmentStatus = asyncHandler(async (req, res) => {
   if (['confirmed', 'cancelled'].includes(status)) {
     const patientEmail = appointment.patientId.email;
     const patientName = `${appointment.patientId.prenom} ${appointment.patientId.nom}`;
+    const doctorName = `${appointment.doctorId.prenom} ${appointment.doctorId.nom}`; // Utiliser les champs peuplés
     const statusText = status === 'confirmed' ? 'confirmé' : 'annulé';
     const subject = `Mise à jour de votre rendez-vous - Statut : ${statusText}`;
-    const text = `Bonjour ${patientName},\n\nVotre rendez-vous du ${appointment.date} à ${appointment.time} a été ${statusText} par le médecin.\n\nCordialement,\nL'équipe de la plateforme médicale`;
+    const text = `Bonjour ${patientName},\n\nVotre rendez-vous du ${appointment.date} à ${appointment.time} a été ${statusText} par le Dr. ${doctorName}.\n\nCordialement,\nL'équipe de la plateforme médicale`;
     const html = `
       <h2>Bonjour ${patientName},</h2>
-      <p>Votre rendez-vous du <strong>${appointment.date}</strong> à <strong>${appointment.time}</strong> a été <strong>${statusText}</strong> par le médecin.</p>
+      <p>Votre rendez-vous du <strong>${appointment.date}</strong> à <strong>${appointment.time}</strong> a été <strong>${statusText}</strong> par le Dr. ${doctorName}.</p>
       <p>Cordialement,<br>L'équipe de la plateforme médicale</p>
     `;
 
@@ -212,7 +215,7 @@ exports.updateAppointmentStatus = asyncHandler(async (req, res) => {
       });
       console.log(`Email sent to ${patientEmail} for status update: ${status}`);
     } catch (error) {
-      console.error(`Failed to send email to ${patientEmail}:`, error);
+      console.error(`Failed to send email to ${patientEmail}:`, error.message, error.stack);
       // Note: We don't fail the request if the email fails; we just log the error
     }
   }
@@ -248,14 +251,16 @@ exports.sendMeetingLink = asyncHandler(async (req, res) => {
     return res.status(403).json({ message: 'Accès refusé. Seuls les médecins peuvent envoyer des liens de réunion.' });
   }
 
-  // Rechercher le rendez-vous et peupler les informations du patient
-  const appointment = await Appointment.findById(appointmentId).populate('patientId', 'nom prenom email');
+  // Rechercher le rendez-vous et peupler les informations du patient ET du médecin
+  const appointment = await Appointment.findById(appointmentId)
+    .populate('patientId', 'nom prenom email') // Peupler les informations du patient
+    .populate('doctorId', 'nom prenom email'); // Peupler les informations du médecin
   if (!appointment) {
     return res.status(404).json({ message: 'Rendez-vous non trouvé.' });
   }
 
   // Vérifier que le rendez-vous appartient au médecin authentifié
-  if (appointment.doctorId.toString() !== doctorId) {
+  if (appointment.doctorId._id.toString() !== doctorId) {
     return res.status(403).json({ message: 'Accès refusé. Vous ne pouvez envoyer des liens que pour vos propres rendez-vous.' });
   }
 
@@ -268,11 +273,12 @@ exports.sendMeetingLink = asyncHandler(async (req, res) => {
   const meetingLink = `https://meet.jit.si/${roomName}`;
   const patientEmail = appointment.patientId.email;
   const patientName = `${appointment.patientId.prenom} ${appointment.patientId.nom}`;
+  const doctorName = `${appointment.doctorId.prenom} ${appointment.doctorId.nom}`; // Utiliser les champs peuplés
   const subject = 'Lien de votre réunion médicale';
-  const text = `Bonjour ${patientName},\n\nVotre médecin a créé une réunion pour votre rendez-vous du ${appointment.date} à ${appointment.time}.\nRejoignez la réunion en utilisant le lien suivant :\n${meetingLink}\n\nCordialement,\nL'équipe de la plateforme médicale`;
+  const text = `Bonjour ${patientName},\n\nVotre médecin Dr. ${doctorName} a créé une réunion pour votre rendez-vous du ${appointment.date} à ${appointment.time}.\nRejoignez la réunion en utilisant le lien suivant :\n${meetingLink}\n\nCordialement,\nL'équipe de la plateforme médicale`;
   const html = `
     <h2>Bonjour ${patientName},</h2>
-    <p>Votre médecin a créé une réunion pour votre rendez-vous du <strong>${appointment.date}</strong> à <strong>${appointment.time}</strong>.</p>
+    <p>Votre médecin Dr. ${doctorName} a créé une réunion pour votre rendez-vous du <strong>${appointment.date}</strong> à <strong>${appointment.time}</strong>.</p>
     <p>Rejoignez la réunion en utilisant le lien suivant : <a href="${meetingLink}">${meetingLink}</a></p>
     <p>Cordialement,<br>L'équipe de la plateforme médicale</p>
   `;
@@ -288,7 +294,7 @@ exports.sendMeetingLink = asyncHandler(async (req, res) => {
     console.log(`Meeting link email sent to ${patientEmail}: ${meetingLink}`);
     res.status(200).json({ message: 'Lien de réunion envoyé au patient avec succès.' });
   } catch (error) {
-    console.error(`Failed to send meeting link email to ${patientEmail}:`, error);
+    console.error(`Failed to send meeting link email to ${patientEmail}:`, error.message, error.stack);
     res.status(500).json({ message: 'Échec de l’envoi du lien de réunion au patient.' });
   }
 });
