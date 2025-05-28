@@ -3,6 +3,15 @@ const { PythonShell } = require('python-shell');
 const Symptom = require('../models/Symptom');
 const path = require('path');
 
+// Fonction pour normaliser les chaînes (remplacer les accents et les espaces)
+const normalizeString = (str) => {
+  return str
+    .toLowerCase()
+    .normalize('NFD') // Décomposer les caractères accentués
+    .replace(/[\u0300-\u036f]/g, '') // Supprimer les diacritiques (accents)
+    .replace(/\s+/g, '_'); // Remplacer les espaces par des underscores
+};
+
 exports.getSymptoms = asyncHandler(async (req, res) => {
   const { lang } = req.params;
   console.log(`Récupération des symptômes pour la langue : ${lang}`);
@@ -25,7 +34,9 @@ exports.diagnose = asyncHandler(async (req, res) => {
     return res.status(400).json({ message: 'No symptoms provided or detected.' });
   }
 
-  console.log('Symptômes finaux avant JSON.stringify :', finalSymptoms);
+  // Normaliser les symptômes pour gérer les accents
+  finalSymptoms = finalSymptoms.map(normalizeString);
+  console.log('Symptômes finaux après normalisation :', finalSymptoms);
   console.log('Langue :', lang);
 
   const inputData = JSON.stringify({ symptoms: finalSymptoms, lang });
