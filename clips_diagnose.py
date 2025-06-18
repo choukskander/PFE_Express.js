@@ -11,10 +11,9 @@ translations_path = os.path.join(data_path, 'translations')
 
 # Fonction pour normaliser les chaînes (supprimer les accents et remplacer les espaces)
 def normalize_string(s):
-    # Décomposer les caractères accentués et supprimer les diacritiques
-    s = unicodedata.normalize('NFD', s).encode('ASCII', 'ignore').decode('ASCII')
-    # Remplacer les espaces par des underscores et passer en minuscules
-    return s.strip().replace(" ", "_").lower()
+    if any('\u0600' <= c <= '\u06FF' for c in s):  # Detect Arabic characters
+        return s.strip().replace(" ", "_").lower()
+    return unicodedata.normalize('NFD', s).encode('ASCII', 'ignore').decode('ASCII').strip().replace(" ", "_").lower()
 
 def load_disease_info(lang):
     if lang == 'en':
@@ -56,37 +55,50 @@ def load_disease_info(lang):
     return descriptions, precautions
 
 def load_symptom_disease_mapping(lang):
+    symptom_disease_map = {}
     if lang == 'en':
         mapping_path = os.path.join(data_path, 'disease-symptoms.csv')
     else:
         mapping_path = os.path.join(translations_path, f'disease-symptoms_{lang}.csv')
 
-    symptom_disease_map = {}
     print(f"Loading symptom mapping for lang: {lang}, path: {mapping_path}", file=sys.stderr)
     try:
-        with open(mapping_path, "r", encoding='utf-8-sig') as f:
+        with open(mapping_path, "r", encoding='utf-8-sig', errors='replace') as f:
             reader = csv.DictReader(f)
             disease_col = next((col for col in reader.fieldnames if col.lower() in ['disease', 'maladie', 'مرض']), None)
             if not disease_col:
                 raise KeyError(f"Colonnes 'disease' ou équivalent manquantes dans {mapping_path}. En-têtes trouvés : {reader.fieldnames}")
             print(f"CSV headers: {reader.fieldnames}", file=sys.stderr)
-            for row in reader:
+            for i, row in enumerate(reader, 1):
+                # Ignorer les lignes vides ou sans maladie
+                if not row or not row[disease_col]:
+                    print(f"Skipping empty or invalid row {i}: {row}", file=sys.stderr)
+                    continue
                 disease = normalize_string(row[disease_col])
-                # Collecter tous les symptômes possibles avec les préfixes appropriés
-                all_symptoms = [normalize_string(s) for s in [
-                    row.get(f'الأعراض_{i}', '') or 
-                    row.get(f'Symptom_{i}', '') or 
-                    row.get(f'Symptome_{i}', '') 
-                    for i in range(1, 18)
-                ] if s.strip()]
-                # Assurer au moins deux symptômes clés (comme dans CLIPS)
-                key_symptoms = all_symptoms[:2] if len(all_symptoms) >= 2 else []
-                optional_symptoms = all_symptoms[2:] if len(all_symptoms) > 2 else []
-                if not key_symptoms:
-                    print(f"Warning: No key symptoms found for {disease}, skipping.", file=sys.stderr)
-                    continue  # Ignorer les maladies sans au moins deux symptômes clés
+                if not disease:
+                    print(f"Skipping row {i} with invalid disease name: {row}", file=sys.stderr)
+                    continue
+                symptom_prefix = 'الأعراض_' if lang == 'ar' else 'Symptom_' if lang == 'en' else 'Symptome_'
+                symptoms = []
+                for j in range(1, 18):
+                    symptom_key = f'{symptom_prefix}{j}'
+                    symptom_value = row.get(symptom_key, None)
+                    if symptom_value is not None:
+                        try:
+                            normalized = normalize_string(symptom_value)
+                            if normalized:
+                                symptoms.append(normalized)
+                        except Exception as e:
+                            print(f"Error normalizing symptom '{symptom_value}' in row {i}, col {symptom_key}: {str(e)}", file=sys.stderr)
+                    else:
+                        print(f"Missing or None value for {symptom_key} in row {i}: {row}", file=sys.stderr)
+                if len(symptoms) < 2:
+                    print(f"Warning: Not enough symptoms for {disease} in row {i} (found {symptoms}), skipping.", file=sys.stderr)
+                    continue
+                key_symptoms = symptoms[:2]
+                optional_symptoms = symptoms[2:] if len(symptoms) > 2 else []
                 symptom_disease_map[disease] = {'key': key_symptoms, 'optional': optional_symptoms}
-                print(f"Loaded symptoms for {disease}: key={key_symptoms}, optional={optional_symptoms}", file=sys.stderr)
+                print(f"Loaded symptoms for {disease} in row {i}: key={key_symptoms}, optional={optional_symptoms}", file=sys.stderr)
     except Exception as e:
         print(json.dumps({"status": "error", "message": f"Erreur lors du chargement du mapping : {str(e)}"}), file=sys.stderr)
         sys.exit(1)

@@ -16,7 +16,6 @@ exports.getSymptoms = asyncHandler(async (req, res) => {
   const { lang } = req.params;
   console.log(`Récupération des symptômes pour la langue : ${lang}`);
   const symptoms = await Symptom.find({ language: lang }).select('name');
-  console.log(`Symptômes trouvés :`, symptoms);
   res.json(symptoms.map(s => s.name));
 });
 

@@ -10,7 +10,7 @@
    (has_symptom éternuements_continus)
    (has_symptom larmoiements)
    (or (has_symptom frissons)
-       (has_symptom frissons))
+       (has_symptom éruption_cutanée))
    =>
    (assert (disease_is Allergie)))
 
@@ -48,7 +48,7 @@
 
 (defrule est_ce_le_SIDA
    (has_symptom atrophie_musculaire)
-   (has_symptom contacts_extraconjugaux)
+   (has_symptom perte_de_poids)
    (or (has_symptom taches_dans_la_gorge)
        (has_symptom fièvre_élevée))
    =>
@@ -146,7 +146,7 @@
    (has_symptom fièvre_élevée)
    (has_symptom fatigue)
    (or (has_symptom frissons)
-       (has_symptom vomissements))
+       (has_symptom douleur_abdominale))
    =>
    (assert (disease_is Typhoïde)))
 
@@ -160,8 +160,8 @@
 
 (defrule est_ce_l_hépatite_B
    (has_symptom peau_jaunâtre)
-   (has_symptom fatigue)
-   (or (has_symptom démangeaisons)
+   (has_symptom démangeaisons)
+   (or (has_symptom fatigue)
        (has_symptom léthargie))
    =>
    (assert (disease_is Hépatite_B)))
@@ -176,8 +176,8 @@
 
 (defrule est_ce_l_hépatite_D
    (has_symptom peau_jaunâtre)
-   (has_symptom fatigue)
-   (or (has_symptom douleur_articulaire)
+   (has_symptom douleur_articulaire)
+   (or (has_symptom fatigue)
        (has_symptom vomissements))
    =>
    (assert (disease_is Hépatite_D)))
@@ -200,9 +200,9 @@
 
 (defrule est_ce_la_tuberculose
    (has_symptom perte_de_poids)
-   (has_symptom fatigue)
+   (has_symptom toux)
    (or (has_symptom frissons)
-       (has_symptom vomissements))
+       (has_symptom fatigue))
    =>
    (assert (disease_is Tuberculose)))
 
