@@ -29,6 +29,8 @@ const userSchema = new mongoose.Schema({
       dimanche: { ouverture: '', fermeture: '', ferme: true },
     },
   },
+  twoFactorCode: { type: String }, // New field for 2FA code
+  twoFactorExpires: { type: Number }, // New field for 2FA code expiration
   updatedAt: { type: Date, default: Date.now },
 });
 
