@@ -1,0 +1,70 @@
+/* Target the Diagnostic IA button */
+button[style*="position: fixed; bottom: 20px; right: 20px"] {
+  /* Reset and enhance base styles */
+  background: linear-gradient(135deg, #0a66c2, #4a90e2); /* Gradient for modern look */
+  border: none; /* Remove default border */
+  border-radius: 50%; /* Keep circular shape */
+  width: 70px; /* Slightly larger for better clickability */
+  height: 70px;
+  font-size: 1.2rem; /* Smaller font for better fit */
+  color: #ffffff; /* White text for contrast */
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2); /* Match card shadow */
+  transition: all 0.3s ease; /* Smooth transitions for hover/focus */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000; /* Ensure it stays above other elements */
+}
+
+/* Hover effect */
+button[style*="position: fixed; bottom: 20px; right: 20px"]:hover {
+  transform: scale(1.1); /* Slight zoom on hover */
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3); /* Stronger shadow */
+  background: linear-gradient(135deg, #4a90e2, #0a66c2); /* Reverse gradient */
+}
+
+/* Focus effect for accessibility */
+button[style*="position: fixed; bottom: 20px; right: 20px"]:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(10, 102, 194, 0.5); /* Focus ring */
+}
+
+/* Optional: Add a subtle pulse animation to draw attention */
+@keyframes pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(10, 102, 194, 0.5);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(10, 102, 194, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(10, 102, 194, 0);
+  }
+}
+
+button[style*="position: fixed; bottom: 20px; right: 20px"] {
+  animation: pulse 2s infinite; /* Subtle pulse effect */
+}
+
+/* Tooltip on hover */
+button[style*="position: fixed; bottom: 20px; right: 20px"]::after {
+  content: 'Diagnostic IA';
+  position: absolute;
+  bottom: 80px; /* Position above the button */
+  right: 0;
+  background: #333;
+  color: #fff;
+  padding: 5px 10px;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  white-space: nowrap;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.3s ease;
+  z-index: 1001;
+}
+
+button[style*="position: fixed; bottom: 20px; right: 20px"]:hover::after {
+  opacity: 1;
+  visibility: visible;
+}

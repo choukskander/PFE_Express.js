@@ -231,7 +231,7 @@ const MedicalForumBuilder = () => {
                 </h1>
               </div>
 
-              <Row gutter={[16, 16]} style={{ width: "90vw", margin: "0 auto" }}>
+              <Row gutter={[16, 16]} style={{ width: "900vw", margin: "0 auto" }}>
                 {/* Éléments de formulaire */}
                 <Col lg={6} className={classes.availableFields}>
                   <h5>Éléments de formulaire</h5>

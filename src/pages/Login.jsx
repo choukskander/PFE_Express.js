@@ -5,6 +5,7 @@ import animationData from './Animation - 1742560736699.json';
 import Navbar from './Navbar';
 import axios from 'axios';
 import Swal from 'sweetalert2';
+import TwoFactorAuth from './TwoFactorAuth';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
@@ -12,6 +13,7 @@ const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
+  const [tempToken, setTempToken] = useState(null);
   const navigate = useNavigate();
 
   const togglePasswordVisibility = () => {
@@ -23,39 +25,45 @@ const Login = () => {
     e.preventDefault();
     try {
       const response = await axios.post(`${API_URL}/api/auth/login`, { email, password });
-      // Stocker l'utilisateur, le token et l'ID utilisateur séparément
-      localStorage.setItem('user', JSON.stringify(response.data));
-      localStorage.setItem('token', response.data.token);
-      localStorage.setItem('userId', response.data._id);
-
-      const Toast = Swal.mixin({
-        toast: true,
-        position: 'top-end',
-        showConfirmButton: false,
-        timer: 3000,
-        timerProgressBar: true,
-        didOpen: (toast) => {
-          toast.onmouseenter = Swal.stopTimer;
-          toast.onmouseleave = Swal.resumeTimer;
-        },
-      });
-      Toast.fire({
-        icon: 'success',
-        title: 'Connexion réussie !',
-      });
-
-      // Rediriger selon le rôle de l'utilisateur
-      const user = response.data;
-      if (user.role === 'admin') {
-        navigate('/admin-dashboard');
-      } else if (user.role === 'internaute') {
-        navigate('/my-appointments/doctor');
-      } else if (user.role === 'patient') {
-        navigate('/my-appointments/patient');
+      console.log('Login response:', response.data); // Debug log
+      if (response.data.tempToken) {
+        console.log('2FA required, tempToken received:', response.data.tempToken);
+        setTempToken(response.data.tempToken);
       } else {
-        navigate('/'); 
+        console.log('No 2FA required, proceeding with login');
+        localStorage.setItem('user', JSON.stringify(response.data));
+        localStorage.setItem('token', response.data.token);
+        localStorage.setItem('userId', response.data._id);
+
+        const Toast = Swal.mixin({
+          toast: true,
+          position: 'top-end',
+          showConfirmButton: false,
+          timer: 3000,
+          timerProgressBar: true,
+          didOpen: (toast) => {
+            toast.onmouseenter = Swal.stopTimer;
+            toast.onmouseleave = Swal.resumeTimer;
+          },
+        });
+        Toast.fire({
+          icon: 'success',
+          title: 'Connexion réussie !',
+        });
+
+        const user = response.data;
+        if (user.role === 'admin') {
+          navigate('/admin-dashboard');
+        } else if (user.role === 'internaute') {
+          navigate('/my-appointments/doctor');
+        } else if (user.role === 'patient') {
+          navigate('/my-appointments/patient');
+        } else {
+          navigate('/');
+        }
       }
     } catch (err) {
+      console.error('Login error:', err.response?.data); // Debug log
       const Toast = Swal.mixin({
         toast: true,
         position: 'top-end',
@@ -157,57 +165,61 @@ const Login = () => {
   return (
     <div>
       <Navbar />
-      <div style={styles.pageContainer}>
-        <div style={styles.contentContainer}>
-          <div>
-            <Lottie animationData={animationData} style={styles.animation} />
-          </div>
-          <div style={styles.card}>
-            <h1 style={styles.title}>Sign In</h1>
-            <form onSubmit={handleLogin} style={styles.form}>
-              <div>
-                <label style={styles.label}>Email Address</label>
-                <input
-                  type="email"
-                  placeholder="Enter email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  style={styles.input}
-                  required
-                />
+      {tempToken ? (
+        <TwoFactorAuth email={email} tempToken={tempToken} />
+      ) : (
+        <div style={styles.pageContainer}>
+          <div style={styles.contentContainer}>
+            <div>
+              <Lottie animationData={animationData} style={styles.animation} />
+            </div>
+            <div style={styles.card}>
+              <h1 style={styles.title}>Sign In</h1>
+              <form onSubmit={handleLogin} style={styles.form}>
+                <div>
+                  <label style={styles.label}>Email Address</label>
+                  <input
+                    type="email"
+                    placeholder="Enter email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    style={styles.input}
+                    required
+                  />
+                </div>
+                <div style={styles.inputContainer}>
+                  <label style={styles.label}>Password</label>
+                  <input
+                    className="fakepassword"
+                    type={isPasswordVisible ? 'text' : 'password'}
+                    placeholder="Enter password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    style={styles.input}
+                    required
+                  />
+                  <span
+                    className="position-absolute top-50 end-0 translate-middle-y p-0 mt-3"
+                    onClick={togglePasswordVisibility}
+                    style={{ cursor: 'pointer' }}
+                  >
+                    <i
+                      className={`fas ${
+                        isPasswordVisible ? 'fa-eye' : 'fa-eye-slash'
+                      } fakepasswordicon cursor-pointer p-2`}
+                      key={isPasswordVisible ? 'eye' : 'eye-slash'}
+                    ></i>
+                  </span>
+                </div>
+                <button type="submit" style={styles.button}>Sign In</button>
+              </form>
+              <div style={styles.footer}>
+                New Customer? <Link to="/register" style={styles.link}>Register</Link>
               </div>
-              <div style={styles.inputContainer}>
-                <label style={styles.label}>Password</label>
-                <input
-                  className="fakepassword"
-                  type={isPasswordVisible ? 'text' : 'password'}
-                  placeholder="Enter password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  style={styles.input}
-                  required
-                />
-                <span
-                  className="position-absolute top-50 end-0 translate-middle-y p-0 mt-3"
-                  onClick={togglePasswordVisibility}
-                  style={{ cursor: 'pointer' }}
-                >
-                  <i
-                    className={`fas ${
-                      isPasswordVisible ? 'fa-eye' : 'fa-eye-slash'
-                    } fakepasswordicon cursor-pointer p-2`}
-                    key={isPasswordVisible ? 'eye' : 'eye-slash'}
-                  ></i>
-                </span>
-              </div>
-              <button type="submit" style={styles.button}>Sign In</button>
-            </form>
-            <div style={styles.footer}>
-              New Customer? <Link to="/register" style={styles.link}>Register</Link>
             </div>
           </div>
         </div>
-      </div>
+      )}
     </div>
   );
 };
