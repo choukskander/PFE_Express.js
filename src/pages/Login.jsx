@@ -6,6 +6,8 @@ import Navbar from './Navbar';
 import axios from 'axios';
 import Swal from 'sweetalert2';
 import TwoFactorAuth from './TwoFactorAuth';
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome"; // Import pour harmoniser avec register
+import { faEye, faEyeSlash } from "@fortawesome/free-solid-svg-icons"; // Icônes pour le password
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
@@ -14,6 +16,7 @@ const Login = () => {
   const [password, setPassword] = useState('');
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
   const [tempToken, setTempToken] = useState(null);
+  const [formErrors, setFormErrors] = useState({});
   const navigate = useNavigate();
 
   const togglePasswordVisibility = () => {
@@ -21,8 +24,24 @@ const Login = () => {
     setIsPasswordVisible(!isPasswordVisible);
   };
 
+  const validateForm = () => {
+    let errors = {};
+    const regex = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/i;
+
+    if (!email) errors.email = "Email address is required.";
+    else if (!regex.test(email)) errors.email = "Email address is invalid.";
+    if (!password) errors.password = "Password is required.";
+    else if (password.length < 6) errors.password = "Password must be at least 6 characters long.";
+
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
   const handleLogin = async (e) => {
     e.preventDefault();
+    setFormErrors({}); // Réinitialise les erreurs avant validation
+    if (!validateForm()) return;
+
     try {
       const response = await axios.post(`${API_URL}/api/auth/login`, { email, password });
       console.log('Login response:', response.data); // Debug log
@@ -64,6 +83,8 @@ const Login = () => {
       }
     } catch (err) {
       console.error('Login error:', err.response?.data); // Debug log
+      // Ajoute un message d'erreur général pour les erreurs serveur
+      setFormErrors({ general: err.response?.data?.message || 'Erreur de connexion' });
       const Toast = Swal.mixin({
         toast: true,
         position: 'top-end',
@@ -80,6 +101,17 @@ const Login = () => {
         title: err.response?.data?.message || 'Erreur de connexion',
       });
     }
+  };
+
+  // Réinitialise les erreurs spécifiques quand l'utilisateur tape
+  const handleEmailChange = (e) => {
+    setEmail(e.target.value);
+    setFormErrors({ ...formErrors, email: null });
+  };
+
+  const handlePasswordChange = (e) => {
+    setPassword(e.target.value);
+    setFormErrors({ ...formErrors, password: null });
   };
 
   const styles = {
@@ -182,19 +214,23 @@ const Login = () => {
                     type="email"
                     placeholder="Enter email"
                     value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    onChange={handleEmailChange}
                     style={styles.input}
                     required
                   />
+                  {formErrors.email && (
+                    <div style={{ color: '#dc3545', marginTop: '0.25rem', fontSize: '0.875rem' }}>
+                      <i className="bi bi-exclamation-triangle me-1"></i> {formErrors.email}
+                    </div>
+                  )}
                 </div>
                 <div style={styles.inputContainer}>
                   <label style={styles.label}>Password</label>
                   <input
-                    className="fakepassword"
                     type={isPasswordVisible ? 'text' : 'password'}
                     placeholder="Enter password"
                     value={password}
-                    onChange={(e) => setPassword(e.target.value)}
+                    onChange={handlePasswordChange}
                     style={styles.input}
                     required
                   />
@@ -203,18 +239,24 @@ const Login = () => {
                     onClick={togglePasswordVisibility}
                     style={{ cursor: 'pointer' }}
                   >
-                    <i
-                      className={`fas ${
-                        isPasswordVisible ? 'fa-eye' : 'fa-eye-slash'
-                      } fakepasswordicon cursor-pointer p-2`}
-                      key={isPasswordVisible ? 'eye' : 'eye-slash'}
-                    ></i>
+                    <FontAwesomeIcon icon={isPasswordVisible ? faEye : faEyeSlash} />
                   </span>
+                  {formErrors.password && (
+                    <div style={{ color: '#dc3545', marginTop: '0.25rem', fontSize: '0.875rem' }}>
+                      <i className="bi bi-exclamation-triangle me-1"></i> {formErrors.password}
+                    </div>
+                  )}
                 </div>
+                {formErrors.general && (
+                  <div style={{ color: '#dc3545', marginTop: '1rem', fontSize: '0.875rem', textAlign: 'center' }}>
+                    <i className="bi bi-exclamation-triangle me-1"></i> {formErrors.general}
+                  </div>
+                )}
                 <button type="submit" style={styles.button}>Sign In</button>
               </form>
               <div style={styles.footer}>
-                New Customer? <Link to="/register" style={styles.link}>Register</Link>
+                New Customer? <Link to="/register" style={styles.link}>Register</Link><br />
+                <Link to="/forgot-password" style={styles.link}>Forgot password?</Link>
               </div>
             </div>
           </div>

@@ -115,7 +115,13 @@ function RegisterInternaute() {
       console.error("Error register Internaute :", error);
     }
   };
-
+    const styles = {
+    link: {
+      color: '#0a66c2',
+      textDecoration: 'none',
+      fontWeight: '600',
+    },
+  };
   return (
     <main>
       <section className="vh-xxl-100">
@@ -134,7 +140,7 @@ function RegisterInternaute() {
                     <div className="p-4 p-sm-6">
                       <h1 className="mb-2 h3">Create new account (Internaute)</h1>
                       <p className="mb-0">
-                        Already a member? <Link to="/login">Log in</Link>
+                        Already a member? <Link to="/login"style={styles.link}>Log in</Link>
                       </p>
                       <form className="mt-4 text-start" onSubmit={onSubmitHandle}>
                         <div className="mb-3">

@@ -27,7 +27,8 @@ import ForumList from "./components/ForumList";
 import ForumResponse from "./components/ForumResponse";
 import ForumResponses from "./components/ForumResponses";
 import DiagnosticIA from './pages/DiagnosticIA';
-
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
 function App() {
   return (
     <UserProvider>
@@ -54,6 +55,8 @@ function App() {
           <Route path="/forum-responses/:forumId" element={<ForumResponses />} />
           <Route path="/admin-dashboard" element={<AdminDashboard />} />
           <Route path="/diagnostic-ia" element={<DiagnosticIA />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="*" element={<ErrorPage />} />
         </Routes>
       </Router>
