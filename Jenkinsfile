@@ -22,7 +22,7 @@ pipeline {
             steps {
                 dir('Client') {
                     git branch: 'Client', 
-                        url: 'https://github.com/choukskander/PFE_Client.git',
+                        url: 'https://github.com/choukskander/PFE_React.js.git',
                         credentialsId: 'github-token'
                 }
             }
