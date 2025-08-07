@@ -4,7 +4,7 @@ pipeline {
     stages {
         stage('Checkout Infrastructure') {
             steps {
-                git branch: 'main', 
+                git branch: 'master', 
                     url: 'https://github.com/choukskander/PFE_Infrastructure.git',
                     credentialsId: 'github-token'
             }
@@ -21,7 +21,7 @@ pipeline {
         stage('Checkout Frontend') {
             steps {
                 dir('Client') {
-                    git branch: 'main', 
+                    git branch: 'Client', 
                         url: 'https://github.com/choukskander/PFE_Client.git',
                         credentialsId: 'github-token'
                 }
