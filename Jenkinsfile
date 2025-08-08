@@ -1,31 +1,16 @@
 pipeline {
     agent any
 
-    environment {
-        DOCKER_COMPOSE_VERSION = 'v2.24.5'
-    }
-
     stages {
-        stage('Install Docker Compose') {
-            steps {
-                sh '''
-                    if ! docker compose version > /dev/null 2>&1; then
-                        echo "Installing Docker Compose plugin..."
-                        sudo apt-get update
-                        sudo apt-get install -y docker-compose-plugin
-                    fi
-                '''
-            }
-        }
-
         stage('Checkout Backend') {
             steps {
-                git branch: 'Server',
-                    url: 'https://github.com/choukskander/PFE_Express.js.git',
-                    credentialsId: 'github-token'
+                dir('Server') {
+                    git branch: 'Server',
+                        url: 'https://github.com/choukskander/PFE_Express.js.git',
+                        credentialsId: 'github-token'
+                }
             }
         }
-
         stage('Checkout Infrastructure') {
             steps {
                 dir('infrastructure') {
@@ -35,7 +20,6 @@ pipeline {
                 }
             }
         }
-
         stage('Checkout Frontend') {
             steps {
                 dir('Client') {
@@ -45,27 +29,13 @@ pipeline {
                 }
             }
         }
-
-        stage('Build and Deploy with Docker Compose') {
+        stage('Build and Deploy') {
             steps {
                 dir('infrastructure') {
-                    sh '''
-                        echo "Stopping existing containers..."
-                        docker compose down || true
-                        echo "Building and starting containers..."
-                        docker compose up --build -d
-                    '''
+                    sh 'docker compose down || true'
+                    sh 'docker compose up --build -d'
                 }
             }
-        }
-    }
-
-    post {
-        success {
-            echo '✅ Deployment successful!'
-        }
-        failure {
-            echo '❌ Deployment failed!'
         }
     }
 }
