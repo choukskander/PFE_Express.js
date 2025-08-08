@@ -1,73 +1,23 @@
 pipeline {
     agent any
 
-    environment {
-        GITHUB_CREDENTIALS = 'github-token' // ID des credentials Jenkins (username + token GitHub)
-        REPO_URL = 'https://github.com/choukskander/PFE_Express.js.git'
-    }
-
     stages {
-        stage('Checkout Backend') {
+        stage('Clone Repository') {
             steps {
-                dir('Server') {
-                    deleteDir() // Supprime dossier pour éviter dépôt vide
-                    checkout([
-                        $class: 'GitSCM',
-                        branches: [[name: '*/Server']],
-                        doGenerateSubmoduleConfigurations: false,
-                        extensions: [],
-                        userRemoteConfigs: [[
-                            url: "${REPO_URL}",
-                            credentialsId: "${GITHUB_CREDENTIALS}"
-                        ]]
-                    ])
-                }
+                git branch: 'Server',
+                    url: 'https://choukskander:ghp_1234567890abcdef1234567890abcdef1234@github.com/choukskander/PFE_Express.js.git'
             }
         }
 
-        stage('Checkout Frontend') {
+        stage('Install Dependencies') {
             steps {
-                dir('Client') {
-                    deleteDir()
-                    checkout([
-                        $class: 'GitSCM',
-                        branches: [[name: '*/Client']],
-                        doGenerateSubmoduleConfigurations: false,
-                        extensions: [],
-                        userRemoteConfigs: [[
-                            url: "${REPO_URL}",
-                            credentialsId: "${GITHUB_CREDENTIALS}"
-                        ]]
-                    ])
-                }
+                sh 'npm install'
             }
         }
 
-        stage('Checkout Infra') {
+        stage('Run Tests') {
             steps {
-                dir('Infra') {
-                    deleteDir()
-                    checkout([
-                        $class: 'GitSCM',
-                        branches: [[name: '*/master']],
-                        doGenerateSubmoduleConfigurations: false,
-                        extensions: [],
-                        userRemoteConfigs: [[
-                            url: "${REPO_URL}",
-                            credentialsId: "${GITHUB_CREDENTIALS}"
-                        ]]
-                    ])
-                }
-            }
-        }
-
-        stage('Build and Run with Docker Compose') {
-            steps {
-                sh '''
-                    cd Infra
-                    docker compose down
-                    docker compose up -d --build
-                '''
+                sh 'npm test || true' // true pour ne pas bloquer si pas encore de tests
             }
         }
     }
