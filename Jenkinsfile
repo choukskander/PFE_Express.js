@@ -1,14 +1,15 @@
 pipeline {
     agent any
-
     stages {
         stage('Check Docker') {
             steps {
-                sh 'docker --version'
-                sh 'docker compose version'
+                sh '''
+                echo "PATH=$PATH"
+                which docker || echo "Docker not found"
+                /usr/bin/docker --version
+                '''
             }
         }
-
         stage('Checkout Backend') {
             steps {
                 dir('Server') {
@@ -18,7 +19,6 @@ pipeline {
                 }
             }
         }
-
         stage('Checkout Infrastructure') {
             steps {
                 dir('infrastructure') {
@@ -28,7 +28,6 @@ pipeline {
                 }
             }
         }
-
         stage('Checkout Frontend') {
             steps {
                 dir('Client') {
@@ -38,12 +37,11 @@ pipeline {
                 }
             }
         }
-
-        stage('Build and Deploy with Docker Compose') {
+        stage('Build and Deploy') {
             steps {
                 dir('infrastructure') {
-                    sh 'docker compose down || true'
-                    sh 'docker compose up --build -d'
+                    sh '/usr/bin/docker compose down || true'
+                    sh '/usr/bin/docker compose up --build -d'
                 }
             }
         }
