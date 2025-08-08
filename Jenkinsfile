@@ -1,76 +1,39 @@
 pipeline {
     agent any
 
-    environment {
-        DOCKER_PATH = "/usr/bin/docker"
-    }
-
     stages {
-
-        stage('Check Docker') {
+        stage('Checkout') {
             steps {
-                sh '''
-                    echo "Vérification de Docker..."
-                    which ${DOCKER_PATH} || echo "Docker introuvable"
-                    ${DOCKER_PATH} --version
-                '''
+                git branch: 'Server',
+                    url: 'https://github.com/choukskander/PFE_Express.js.git',
+                    credentialsId: 'github-token'
             }
         }
-
-        stage('Checkout Backend') {
-            steps {
-                dir('Server') {
-                    deleteDir()
-                    git branch: 'Server',
-                        url: 'https://github.com/choukskander/PFE_Express.js.git',
-                        credentialsId: 'github-token'
-                }
-            }
-        }
-
-        stage('Checkout Frontend') {
-            steps {
-                dir('Client') {
-                    deleteDir()
-                    git branch: 'Client',
-                        url: 'https://github.com/choukskander/PFE_React.js.git',
-                        credentialsId: 'github-token'
-                }
-            }
-        }
-
         stage('Checkout Infrastructure') {
             steps {
                 dir('infrastructure') {
-                    deleteDir()
                     git branch: 'master',
                         url: 'https://github.com/choukskander/PFE_Infrastructure.git',
                         credentialsId: 'github-token'
                 }
             }
         }
-
-        stage('Build and Deploy') {
+        stage('Checkout Frontend') {
             steps {
-                dir('infrastructure') {
-                    sh '''
-                        echo "Arrêt des conteneurs existants..."
-                        ${DOCKER_PATH} compose down || true
-                        
-                        echo "Construction et démarrage des conteneurs..."
-                        ${DOCKER_PATH} compose up --build -d
-                    '''
+                dir('Client') {
+                    git branch: 'Client',
+                        url: 'https://github.com/choukskander/PFE_React.js.git',
+                        credentialsId: 'github-token'
                 }
             }
         }
-    }
-
-    post {
-        success {
-            echo "🚀 Déploiement réussi !"
-        }
-        failure {
-            echo "❌ Échec du pipeline."
+        stage('Build and Deploy') {
+            steps {
+                dir('infrastructure') {
+                    sh 'docker compose down || true'
+                    sh 'docker compose up --build -d'
+                }
+            }
         }
     }
 }
