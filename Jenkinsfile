@@ -1,58 +1,20 @@
 pipeline {
-    agent any
-    options {
-        skipDefaultCheckout() // empêche le checkout auto de Jenkins
+  agent any
+  stages {
+    stage('Clone') {
+      steps {
+        git branch: 'Server', url: 'https://github.com/choukskander/PFE_Express.js.git'
+      }
     }
-    stages {
-        stage('Nettoyage du workspace') {
-            steps {
-                deleteDir()
-            }
-        }
-
-        stage('Configurer Git Safe Directory') {
-            steps {
-                sh 'git config --global --add safe.directory /var/jenkins_home/workspace/${JOB_NAME}'
-            }
-        }
-
-        stage('Cloner Backend') {
-            steps {
-                dir('Server') {
-                    git branch: 'Server',
-                        url: 'https://github.com/choukskander/PFE_Express.js.git',
-                        credentialsId: 'github-token'
-                }
-            }
-        }
-
-        stage('Cloner Frontend') {
-            steps {
-                dir('Client') {
-                    git branch: 'Client',
-                        url: 'https://github.com/choukskander/PFE_React.js.git',
-                        credentialsId: 'github-token'
-                }
-            }
-        }
-
-        stage('Cloner Infrastructure') {
-            steps {
-                dir('infrastructure') {
-                    git branch: 'master', 
-                        url: 'https://github.com/choukskander/PFE_Infrastructure.git',
-                        credentialsId: 'github-token'
-                }
-            }
-        }
-
-        stage('Déploiement avec Docker Compose') {
-            steps {
-                dir('infrastructure') {
-                    sh 'docker compose down || true'
-                    sh 'docker compose up --build -d'
-                }
-            }
-        }
+    stage('Build') {
+      steps {
+        sh 'docker build -t pfe-express:latest .'
+      }
     }
+    stage('Deploy') {
+      steps {
+        sh 'docker compose -f /home/vagrant/PFE/docker-compose.yml up -d --build'
+      }
+    }
+  }
 }
