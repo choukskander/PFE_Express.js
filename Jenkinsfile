@@ -1,23 +1,52 @@
 pipeline {
     agent any
-
     stages {
-        stage('Clone Repository') {
+        stage('Check Docker') {
             steps {
-                git branch: 'Server',
-                    url: 'https://choukskander:ghp_1234567890abcdef1234567890abcdef1234@github.com/choukskander/PFE_Express.js.git'
+                sh '''
+                echo "PATH=$PATH"
+                which docker || echo "Docker not found"
+                docker --version
+                '''
             }
         }
 
-        stage('Install Dependencies') {
+        stage('Checkout Backend') {
             steps {
-                sh 'npm install'
+                dir('Server') {
+                    git branch: 'Server',
+                        url: 'https://github.com/choukskander/PFE_Express.js.git',
+                        credentialsId: 'github-token'
+                }
             }
         }
 
-        stage('Run Tests') {
+        stage('Checkout Infrastructure') {
             steps {
-                sh 'npm test || true' // true pour ne pas bloquer si pas encore de tests
+                dir('infrastructure') {
+                    git branch: 'master',
+                        url: 'https://github.com/choukskander/PFE_Infrastructure.git',
+                        credentialsId: 'github-token'
+                }
+            }
+        }
+
+        stage('Checkout Frontend') {
+            steps {
+                dir('Client') {
+                    git branch: 'Client',
+                        url: 'https://github.com/choukskander/PFE_React.js.git',
+                        credentialsId: 'github-token'
+                }
+            }
+        }
+
+        stage('Build and Deploy') {
+            steps {
+                dir('infrastructure') {
+                    sh 'docker compose down || true'
+                    sh 'docker compose up --build -d'
+                }
             }
         }
     }
