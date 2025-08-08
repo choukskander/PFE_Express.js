@@ -9,6 +9,13 @@ pipeline {
                 deleteDir()
             }
         }
+
+        stage('Configurer Git Safe Directory') {
+            steps {
+                sh 'git config --global --add safe.directory /var/jenkins_home/workspace/${JOB_NAME}'
+            }
+        }
+
         stage('Cloner Backend') {
             steps {
                 dir('Server') {
@@ -18,6 +25,7 @@ pipeline {
                 }
             }
         }
+
         stage('Cloner Frontend') {
             steps {
                 dir('Client') {
@@ -27,6 +35,7 @@ pipeline {
                 }
             }
         }
+
         stage('Cloner Infrastructure') {
             steps {
                 dir('infrastructure') {
@@ -36,6 +45,7 @@ pipeline {
                 }
             }
         }
+
         stage('Déploiement avec Docker Compose') {
             steps {
                 dir('infrastructure') {
