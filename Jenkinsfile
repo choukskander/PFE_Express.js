@@ -1,6 +1,10 @@
 pipeline {
     agent any
     
+    environment {
+        DOCKER_COMPOSE = "/usr/local/bin/docker-compose"
+    }
+    
     stages {
         stage('Checkout Infrastructure') {
             steps {
@@ -34,8 +38,8 @@ pipeline {
             steps {
                 dir('.') {
                     withEnv(["PATH=$PATH:/usr/local/bin"]) {
-                        sh '/usr/local/bin/docker-compose down || true'
-                        sh '/usr/local/bin/docker-compose up --build -d'
+                        sh "${DOCKER_COMPOSE} down || true"
+                        sh "${DOCKER_COMPOSE} up --build -d"
                     }
                 }
             }
