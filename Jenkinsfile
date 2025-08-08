@@ -1,15 +1,15 @@
 pipeline {
     agent any
     options {
-        skipDefaultCheckout()
+        skipDefaultCheckout() // empêche le checkout auto de Jenkins
     }
     stages {
-        stage('Clean Workspace') {
+        stage('Nettoyage du workspace') {
             steps {
                 deleteDir()
             }
         }
-        stage('Checkout Backend') {
+        stage('Cloner Backend') {
             steps {
                 dir('Server') {
                     git branch: 'Server',
@@ -18,16 +18,7 @@ pipeline {
                 }
             }
         }
-        stage('Checkout Infrastructure') {
-            steps {
-                dir('infrastructure') {
-                    git branch: 'master',
-                        url: 'https://github.com/choukskander/PFE_Infrastructure.git',
-                        credentialsId: 'github-token'
-                }
-            }
-        }
-        stage('Checkout Frontend') {
+        stage('Cloner Frontend') {
             steps {
                 dir('Client') {
                     git branch: 'Client',
@@ -36,11 +27,20 @@ pipeline {
                 }
             }
         }
-        stage('Build and Deploy') {
+        stage('Cloner Infrastructure') {
             steps {
                 dir('infrastructure') {
-                    sh '/usr/bin/docker compose down || true'
-                    sh '/usr/bin/docker compose up --build -d'
+                    git branch: 'master', 
+                        url: 'https://github.com/choukskander/PFE_Infrastructure.git',
+                        credentialsId: 'github-token'
+                }
+            }
+        }
+        stage('Déploiement avec Docker Compose') {
+            steps {
+                dir('infrastructure') {
+                    sh 'docker compose down || true'
+                    sh 'docker compose up --build -d'
                 }
             }
         }
