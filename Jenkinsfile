@@ -20,8 +20,8 @@ pipeline {
         stage('Checkout Backend') {
             steps {
                 dir('Server') {
-                    deleteDir() // Nettoyer si dossier existe déjà
-                    git branch: 'Server',
+                    deleteDir()
+                    git branch: 'main',
                         url: 'https://github.com/choukskander/PFE_Express.js.git',
                         credentialsId: 'github-token'
                 }
@@ -32,7 +32,7 @@ pipeline {
             steps {
                 dir('Client') {
                     deleteDir()
-                    git branch: 'Client',
+                    git branch: 'main',
                         url: 'https://github.com/choukskander/PFE_React.js.git',
                         credentialsId: 'github-token'
                 }
@@ -43,7 +43,7 @@ pipeline {
             steps {
                 dir('infrastructure') {
                     deleteDir()
-                    git branch: 'master',
+                    git branch: 'main',
                         url: 'https://github.com/choukskander/PFE_Infrastructure.git',
                         credentialsId: 'github-token'
                 }
