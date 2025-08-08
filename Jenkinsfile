@@ -11,6 +11,7 @@ pipeline {
                 }
             }
         }
+
         stage('Checkout Infrastructure') {
             steps {
                 dir('infrastructure') {
@@ -20,6 +21,7 @@ pipeline {
                 }
             }
         }
+
         stage('Checkout Frontend') {
             steps {
                 dir('Client') {
@@ -29,7 +31,8 @@ pipeline {
                 }
             }
         }
-        stage('Build and Deploy') {
+
+        stage('Build and Deploy with Docker Compose') {
             steps {
                 dir('infrastructure') {
                     sh 'docker compose down || true'
