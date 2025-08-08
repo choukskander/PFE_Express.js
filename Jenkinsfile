@@ -21,7 +21,7 @@ pipeline {
             steps {
                 dir('Server') {
                     deleteDir()
-                    git branch: 'main',
+                    git branch: 'Server',
                         url: 'https://github.com/choukskander/PFE_Express.js.git',
                         credentialsId: 'github-token'
                 }
@@ -32,7 +32,7 @@ pipeline {
             steps {
                 dir('Client') {
                     deleteDir()
-                    git branch: 'main',
+                    git branch: 'Client',
                         url: 'https://github.com/choukskander/PFE_React.js.git',
                         credentialsId: 'github-token'
                 }
@@ -43,7 +43,7 @@ pipeline {
             steps {
                 dir('infrastructure') {
                     deleteDir()
-                    git branch: 'main',
+                    git branch: 'master',
                         url: 'https://github.com/choukskander/PFE_Infrastructure.git',
                         credentialsId: 'github-token'
                 }
