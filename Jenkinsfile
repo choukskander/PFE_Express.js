@@ -1,16 +1,14 @@
 pipeline {
     agent any
+    options {
+        skipDefaultCheckout()
+    }
     stages {
-        stage('Check Docker') {
+        stage('Clean Workspace') {
             steps {
-                sh '''
-                echo "PATH=$PATH"
-                which docker || echo "Docker not found"
-                docker --version
-                '''
+                deleteDir()
             }
         }
-
         stage('Checkout Backend') {
             steps {
                 dir('Server') {
@@ -20,7 +18,6 @@ pipeline {
                 }
             }
         }
-
         stage('Checkout Infrastructure') {
             steps {
                 dir('infrastructure') {
@@ -30,7 +27,6 @@ pipeline {
                 }
             }
         }
-
         stage('Checkout Frontend') {
             steps {
                 dir('Client') {
@@ -40,12 +36,11 @@ pipeline {
                 }
             }
         }
-
         stage('Build and Deploy') {
             steps {
                 dir('infrastructure') {
-                    sh 'docker compose down || true'
-                    sh 'docker compose up --build -d'
+                    sh '/usr/bin/docker compose down || true'
+                    sh '/usr/bin/docker compose up --build -d'
                 }
             }
         }
