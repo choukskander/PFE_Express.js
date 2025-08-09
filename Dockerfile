@@ -20,6 +20,6 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/*
 
 # Give Jenkins access to Docker socket
-RUN groupadd -for docker && usermod -aG docker jenkins
+RUN groupadd -f docker && usermod -aG docker jenkins
 
 USER jenkins
