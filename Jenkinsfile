@@ -1,93 +1,89 @@
 pipeline {
-  agent any
-  environment {
-    COMPOSE_FILE = './PFE/docker-compose.yml'
-    BACKEND_DIR = './PFE/Server'
-    CLIENT_DIR = './PFE/Client'
-  }
-  stages {
-    stage('Initialize') {
-      steps {
-        sh 'rm -rf PFE'
-        sh 'mkdir -p PFE'
-        echo 'Workspace cleaned and PFE directory created'
-      }
+    agent any
+
+    environment {
+        PATH = '/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin'
+        COMPOSE_FILE = './PFE/docker-compose.yml'
+        BACKEND_DIR = './PFE/Server'
+        CLIENT_DIR = './PFE/Client'
     }
-    stage('Clone Repositories') {
-      steps {
-        dir('PFE/Server') {
-          script {
-            try {
-              git branch: 'Server',
-                  url: 'https://github.com/choukskander/PFE_Express.js.git',
-                  credentialsId: 'github-token'
-              sh 'git status'
-              echo 'Server repository cloned successfully'
-            } catch (Exception e) {
-              error "Failed to clone Server repository: ${e.message}"
+
+    stages {
+
+        stage('Initialize') {
+            steps {
+                echo '🧹 Nettoyage du workspace...'
+                sh '''
+                    rm -rf PFE
+                    mkdir -p PFE
+                '''
+                echo '✅ Workspace nettoyé et dossier PFE créé'
             }
-          }
         }
-        dir('PFE/Client') {
-          script {
-            try {
-              git branch: 'main', // REPLACE with correct branch
-                  url: 'https://github.com/choukskander/PFE_Client.git', // REPLACE with correct URL
-                  credentialsId: 'github-token'
-              sh 'git status'
-              echo 'Client repository cloned successfully'
-            } catch (Exception e) {
-              error "Failed to clone Client repository: ${e.message}"
+
+        stage('Clone Repositories') {
+            steps {
+                script {
+                    try {
+                        dir("${BACKEND_DIR}") {
+                            git branch: 'Server',
+                                url: 'https://github.com/choukskander/PFE_Express.js.git',
+                                credentialsId: 'github-token'
+                            sh 'git status'
+                            echo '✅ Server repository cloné avec succès'
+                        }
+                    } catch (Exception e) {
+                        error "❌ Échec du clonage du dépôt Server : ${e.message}"
+                    }
+
+                    try {
+                        dir("${CLIENT_DIR}") {
+                            git branch: 'Client',
+                                url: 'https://github.com/choukskander/PFE_React.js.git',
+                                credentialsId: 'github-token'
+                            sh 'git status'
+                            echo '✅ Client repository cloné avec succès'
+                        }
+                    } catch (Exception e) {
+                        error "❌ Échec du clonage du dépôt Client : ${e.message}"
+                    }
+
+                    try {
+                        dir('PFE') {
+                            git branch: 'master',
+                                url: 'https://github.com/choukskander/PFE_Infrastructure.git',
+                                credentialsId: 'github-token'
+                            sh 'ls -la'
+                            echo '✅ Infrastructure repository cloné avec succès'
+                        }
+                    } catch (Exception e) {
+                        error "❌ Échec du clonage du dépôt Infrastructure : ${e.message}"
+                    }
+                }
             }
-          }
         }
-        dir('PFE') {
-          script {
-            try {
-              git branch: 'main', // REPLACE with correct branch
-                  url: 'https://github.com/choukskander/PFE_Docker.git', // REPLACE with correct URL
-                  credentialsId: 'github-token'
-              sh 'git status'
-              echo 'Docker-compose repository cloned successfully'
-            } catch (Exception e) {
-              error "Failed to clone docker-compose repository: ${e.message}"
+
+        stage('Build and Deploy') {
+            steps {
+                script {
+                    try {
+                        echo '🚀 Lancement du Build et Déploiement...'
+
+                        // Arrêt des containers existants (sans erreur si absents)
+                        sh "docker compose -f ${COMPOSE_FILE} down || true"
+
+                        // Build + démarrage en détaché
+                        sh "docker compose -f ${COMPOSE_FILE} up --build -d"
+
+                        // Affichage des containers en cours
+                        sh 'docker ps'
+
+                        echo '✅ Build et Déploiement terminés avec succès'
+                    } catch (Exception e) {
+                        error "❌ Build and Deploy échoué : ${e.message}"
+                    }
+                }
             }
-          }
         }
-        sh 'ls -R PFE'
-      }
     }
-    stage('Build') {
-      steps {
-        sh "docker build -t pfe-express:latest ${BACKEND_DIR}"
-        sh "docker build -t pfe-frontend:latest ${CLIENT_DIR}"
-        echo 'Docker images built successfully'
-      }
-    }
-    stage('Deploy') {
-      steps {
-        withCredentials([string(credentialsId: 'mongo-atlas-uri', variable: 'DB_CONNECTION')]) {
-          sh """
-            echo 'DB_CONNECTION=\${DB_CONNECTION}' > ${BACKEND_DIR}/.env
-            cat ${BACKEND_DIR}/.env
-            docker compose -f ${COMPOSE_FILE} up -d --build
-          """
-        }
-        echo 'Application deployed successfully'
-      }
-    }
-  }
-  post {
-    always {
-      sh 'docker system prune -f --volumes || true'
-      archiveArtifacts artifacts: 'PFE/Server/.env, PFE/docker-compose.yml', allowEmptyArchive: true
-    }
-    success {
-      echo 'Pipeline completed successfully! Backend: http://localhost:5000, Frontend: http://localhost:3000'
-    }
-    failure {
-      echo 'Pipeline failed! Check Jenkins console output and Docker logs:'
-      sh 'docker compose -f ${COMPOSE_FILE} logs || true'
-    }
-  }
 }
