@@ -1,89 +1,64 @@
 pipeline {
-    agent any
+    agent any 
 
     environment {
         PATH = '/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin'
-        COMPOSE_FILE = './PFE/docker-compose.yml'
-        BACKEND_DIR = './PFE/Server'
-        CLIENT_DIR = './PFE/Client'
+        WORKSPACE_DIR = 'PFE' 
+        COMPOSE_FILE = "${WORKSPACE_DIR}/docker-compose.yml"
     }
 
     stages {
-
-        stage('Initialize') {
+        stage('Prepare Workspace') {
             steps {
-                echo '🧹 Nettoyage du workspace...'
-                sh '''
-                    rm -rf PFE
-                    mkdir -p PFE
-                '''
-                echo '✅ Workspace nettoyé et dossier PFE créé'
+                sh 'mkdir -p ${WORKSPACE_DIR}' 
+                sh 'mkdir -p ${WORKSPACE_DIR}/Server'
+                sh 'mkdir -p ${WORKSPACE_DIR}/Client'
             }
         }
 
         stage('Clone Repositories') {
             steps {
-                script {
-                    try {
-                        dir("${BACKEND_DIR}") {
-                            git branch: 'Server',
-                                url: 'https://github.com/choukskander/PFE_Express.js.git',
-                                credentialsId: 'github-token'
-                            sh 'git status'
-                            echo '✅ Server repository cloné avec succès'
-                        }
-                    } catch (Exception e) {
-                        error "❌ Échec du clonage du dépôt Server : ${e.message}"
-                    }
-
-                    try {
-                        dir("${CLIENT_DIR}") {
-                            git branch: 'Client',
-                                url: 'https://github.com/choukskander/PFE_React.js.git',
-                                credentialsId: 'github-token'
-                            sh 'git status'
-                            echo '✅ Client repository cloné avec succès'
-                        }
-                    } catch (Exception e) {
-                        error "❌ Échec du clonage du dépôt Client : ${e.message}"
-                    }
-
-                    try {
-                        dir('PFE') {
-                            git branch: 'master',
-                                url: 'https://github.com/choukskander/PFE_Infrastructure.git',
-                                credentialsId: 'github-token'
-                            sh 'ls -la'
-                            echo '✅ Infrastructure repository cloné avec succès'
-                        }
-                    } catch (Exception e) {
-                        error "❌ Échec du clonage du dépôt Infrastructure : ${e.message}"
-                    }
+                dir("${WORKSPACE_DIR}/Server") {
+                    git branch: 'Server', url: 'https://github.com/choukskander/PFE_Express.js.git', credentialsId: 'github-token'
                 }
+                dir("${WORKSPACE_DIR}/Client") {
+                    git branch: 'Client', url: 'https://github.com/choukskander/PFE_React.js.git', credentialsId: 'github-token'
+                }
+                dir("${WORKSPACE_DIR}") {
+                    git branch: 'master', url: 'https://github.com/choukskander/PFE_Infrastructure.git', credentialsId: 'github-token'
+                }
+                sh 'ls -R ${WORKSPACE_DIR}' 
+        }
+
+        stage('Build') {
+            steps {
+                sh "docker build -t pfe-express:latest ${WORKSPACE_DIR}/Server"
+                sh "docker build -t pfe-frontend:latest ${WORKSPACE_DIR}/Client"
             }
         }
 
-        stage('Build and Deploy') {
+        stage('Deploy') {
             steps {
-                script {
-                    try {
-                        echo '🚀 Lancement du Build et Déploiement...'
-
-                        // Arrêt des containers existants (sans erreur si absents)
-                        sh "docker compose -f ${COMPOSE_FILE} down || true"
-
-                        // Build + démarrage en détaché
-                        sh "docker compose -f ${COMPOSE_FILE} up --build -d"
-
-                        // Affichage des containers en cours
-                        sh 'docker ps'
-
-                        echo '✅ Build et Déploiement terminés avec succès'
-                    } catch (Exception e) {
-                        error "❌ Build and Deploy échoué : ${e.message}"
-                    }
+                withCredentials([string(credentialsId: 'mongo-atlas-uri', variable: 'DB_CONNECTION')]) {
+                    sh """
+                        echo 'DB_CONNECTION=\${DB_CONNECTION}' > ${WORKSPACE_DIR}/Server/.env
+                        docker compose -f ${COMPOSE_FILE} up -d --build
+                    """
                 }
             }
+        }
+    }
+
+    post {
+        always {
+            sh 'docker system prune -f --volumes || true'
+            archiveArtifacts artifacts: "${WORKSPACE_DIR}/Server/.env, ${WORKSPACE_DIR}/docker-compose.yml", allowEmptyArchive: true
+        }
+        success {
+            echo 'Pipeline succeeded! Check: http://localhost:5000 (backend), http://localhost:3000 (frontend)'
+        }
+        failure {
+            echo 'Pipeline failed—likely permissions. Add Jenkins user to Docker group with: sudo usermod -aG docker jenkins && sudo service jenkins restart'
         }
     }
 }
