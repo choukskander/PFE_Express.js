@@ -1,152 +1,52 @@
-// pipeline {
-//     agent any
+// Début du Pipeline
 
-//     environment {
-//         PATH = '/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin'
-//         WORKSPACE_DIR = 'PFE'
-//         COMPOSE_FILE = "${WORKSPACE_DIR}/docker-compose.yml"
-//         NEXUS_REGISTRY = 'localhost:8082'
-//     }
-
-//     stages {
-//         stage('Prepare Workspace') {
-//             steps {
-//                 sh 'mkdir -p ${WORKSPACE_DIR}/Server ${WORKSPACE_DIR}/Client'
-//             }
-//         }
-
-//         stage('Clone Repositories') {
-//             steps {
-//                 dir("${WORKSPACE_DIR}/Server") {
-//                     git branch: 'Server', url: 'https://github.com/choukskander/PFE_Express.js.git', credentialsId: 'github-token'
-//                 }
-//                 dir("${WORKSPACE_DIR}/Client") {
-//                     git branch: 'Client', url: 'https://github.com/choukskander/PFE_React.js.git', credentialsId: 'github-token'
-//                 }
-//                 dir("${WORKSPACE_DIR}") {
-//                     git branch: 'master', url: 'https://github.com/choukskander/PFE_Infrastructure.git', credentialsId: 'github-token'
-//                 }
-//                 sh 'ls -R ${WORKSPACE_DIR}'
-//             }
-//         }
-
-//         stage('Build Docker Images') {
-//             steps {
-//                 // Construire et tagger les images avec le registre Nexus
-//                 sh "docker build -t ${NEXUS_REGISTRY}/pfe-express:latest ${WORKSPACE_DIR}/Server"
-//                 sh "docker build -t ${NEXUS_REGISTRY}/pfe-frontend:latest ${WORKSPACE_DIR}/Client"
-//             }
-//         }
-
-//         stage('Login to Nexus Docker Registry') {
-//             steps {
-//                 withCredentials([usernamePassword(credentialsId: 'nexus-docker-credentials', usernameVariable: 'NEXUS_USER', passwordVariable: 'NEXUS_PASS')]) {
-//                     sh "docker login ${NEXUS_REGISTRY} -u $NEXUS_USER -p $NEXUS_PASS"
-//                 }
-//             }
-//         }
-
-//         stage('Push Docker Images to Nexus') {
-//             steps {
-//                 sh "docker push ${NEXUS_REGISTRY}/pfe-express:latest"
-//                 sh "docker push ${NEXUS_REGISTRY}/pfe-frontend:latest"
-//             }
-//         }
-
-//         stage('Create .env File & Deploy') {
-//             steps {
-//                 withCredentials([string(credentialsId: 'mongo-atlas-uri', variable: 'DB_CONNECTION')]) {
-//                     sh """
-//                         echo "DB_CONNECTION=$DB_CONNECTION" > ${WORKSPACE_DIR}/Server/.env
-//                         cd ${WORKSPACE_DIR}
-//                         docker-compose -f docker-compose.yml up -d --build
-//                     """
-//                 }
-//             }
-//         }
-//     }
-
-//     post {
-//         always {
-//             sh 'docker system prune -f --volumes || true'
-//             archiveArtifacts artifacts: "${WORKSPACE_DIR}/Server/.env, ${WORKSPACE_DIR}/docker-compose.yml", allowEmptyArchive: true
-//         }
-//     }
-// }
 pipeline {
     agent any
 
     environment {
-        // On garde le PATH complet avec SonarScanner + chemins système
-        PATH = "${tool('SonarScanner')}/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:${env.PATH}"
-        WORKSPACE_DIR = 'PFE'
-        COMPOSE_FILE = "${WORKSPACE_DIR}/docker-compose.yml"
+        PATH = "${tool('SonarScanner')}/bin:${env.PATH}"
+        INFRA_DIR = "PFE/PFE_Infrastructure"
+        SERVER_DIR = "PFE/Server"
+        CLIENT_DIR = "PFE/Client"
         NEXUS_REGISTRY = 'localhost:8082'
+        BACKEND_IMAGE = "${NEXUS_REGISTRY}/pfe-express:latest"
+        FRONTEND_IMAGE = "${NEXUS_REGISTRY}/pfe-frontend:latest"
     }
 
     stages {
-        stage('Prepare Workspace') {
+
+        stage('Cleanup & Prepare') {
             steps {
-                sh "mkdir -p ${WORKSPACE_DIR}/Server ${WORKSPACE_DIR}/Client"
+                deleteDir()
+                sh "mkdir -p ${SERVER_DIR} ${CLIENT_DIR} ${INFRA_DIR}"
             }
         }
 
         stage('Clone Repositories') {
             steps {
-                dir("${WORKSPACE_DIR}/Server") {
-                    git branch: 'Server', 
-                        url: 'https://github.com/choukskander/PFE_Express.js.git', 
-                        credentialsId: 'github-token'
-                }
-                dir("${WORKSPACE_DIR}/Client") {
-                    git branch: 'Client', 
-                        url: 'https://github.com/choukskander/PFE_React.js.git', 
-                        credentialsId: 'github-token'
-                }
-                dir("${WORKSPACE_DIR}") {
-                    git branch: 'master', 
-                        url: 'https://github.com/choukskander/PFE_Infrastructure.git', 
-                        credentialsId: 'github-token'
-                }
-                sh "ls -R ${WORKSPACE_DIR}"
+                dir(SERVER_DIR) { git branch: 'Server', url: 'https://github.com/choukskander/PFE_Express.js.git', credentialsId: 'github-token' }
+                dir(CLIENT_DIR) { git branch: 'Client', url: 'https://github.com/choukskander/PFE_React.js.git', credentialsId: 'github-token' }
+                dir(INFRA_DIR) { git branch: 'master', url: 'https://github.com/choukskander/PFE_Infrastructure.git', credentialsId: 'github-token' }
             }
         }
 
         stage('SonarQube Analysis') {
             steps {
                 withSonarQubeEnv('SonarQube') {
-                    // Analyse backend
-                    dir("${WORKSPACE_DIR}/Server") {
-                        sh """
-                            sonar-scanner \
-                            -Dsonar.projectKey=pfe-backend \
-                            -Dsonar.projectName='PFE Backend' \
-                            -Dsonar.sources=. \
-                            -Dsonar.exclusions=**/node_modules/**
-                        """
-                    }
-                    // Analyse frontend
-                    dir("${WORKSPACE_DIR}/Client") {
-                        sh """
-                            sonar-scanner \
-                            -Dsonar.projectKey=pfe-frontend \
-                            -Dsonar.projectName='PFE Frontend' \
-                            -Dsonar.sources=. \
-                            -Dsonar.exclusions=**/node_modules/**
-                        """
-                    }
+                    dir(SERVER_DIR) { sh "sonar-scanner -Dsonar.projectKey=pfe-backend -Dsonar.projectName='PFE Backend' -Dsonar.sources=. -Dsonar.exclusions=**/node_modules/**" }
+                    dir(CLIENT_DIR) { sh "sonar-scanner -Dsonar.projectKey=pfe-frontend -Dsonar.projectName='PFE Frontend' -Dsonar.sources=. -Dsonar.exclusions=**/node_modules/**" }
                 }
             }
         }
 
-        stage('Build Docker Images') {
+        stage('Build App Images') {
             steps {
-                sh "docker build -t ${NEXUS_REGISTRY}/pfe-express:latest ${WORKSPACE_DIR}/Server"
-                sh "docker build -t ${NEXUS_REGISTRY}/pfe-frontend:latest ${WORKSPACE_DIR}/Client"
+                sh "docker build -t ${BACKEND_IMAGE} ${SERVER_DIR}"
+                sh "docker build -t ${FRONTEND_IMAGE} ${CLIENT_DIR}"
             }
         }
 
-        stage('Login to Nexus Docker Registry') {
+        stage('Login to Nexus') {
             steps {
                 withCredentials([usernamePassword(credentialsId: 'nexus-docker-credentials', usernameVariable: 'NEXUS_USER', passwordVariable: 'NEXUS_PASS')]) {
                     sh "docker login ${NEXUS_REGISTRY} -u $NEXUS_USER -p $NEXUS_PASS"
@@ -154,21 +54,49 @@ pipeline {
             }
         }
 
-        stage('Push Docker Images to Nexus') {
+        stage('Push App Images') {
             steps {
-                sh "docker push ${NEXUS_REGISTRY}/pfe-express:latest"
-                sh "docker push ${NEXUS_REGISTRY}/pfe-frontend:latest"
+                sh "docker push ${BACKEND_IMAGE}"
+                sh "docker push ${FRONTEND_IMAGE}"
             }
         }
 
-        stage('Create .env File & Deploy') {
+        // === ÉTAPE DE DÉPLOIEMENT FINALE ET ROBUSTE ===
+        stage('Deploy Application') {
             steps {
-                withCredentials([string(credentialsId: 'mongo-atlas-uri', variable: 'DB_CONNECTION')]) {
-                    sh """
-                        echo "DB_CONNECTION=$DB_CONNECTION" > ${WORKSPACE_DIR}/Server/.env
-                        cd ${WORKSPACE_DIR}
-                        docker-compose -f docker-compose.yml up -d --build
-                    """
+                dir(INFRA_DIR) {
+                    withCredentials([string(credentialsId: 'mongo-atlas-uri', variable: 'DB_CONNECTION')]) {
+                        script {
+                            echo "Préparation des fichiers de configuration..."
+                            sh "echo 'DB_CONNECTION=${DB_CONNECTION}' > ../Server/.env"
+                            
+                            // On s'assure que le fichier prometheus.yml existe pour la commande 'build'
+                            // On utilise le bon contenu
+                            writeFile(
+                                file: 'prometheus.yml', 
+                                text: '''
+global:
+  scrape_interval: 15s
+scrape_configs:
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['prometheus:9090']
+  - job_name: 'backend'
+    static_configs:
+      - targets: ['backend:5000']
+'''
+                            )
+
+                            sh """
+                                set -x
+                                # La commande --build est maintenant cruciale
+                                # Elle construit notre image Prometheus personnalisée avant de la lancer.
+                                # Ceci résout DÉFINITIVEMENT le problème de montage de volume.
+                                docker-compose down --volumes --remove-orphans || true
+                                docker-compose up --build -d 
+                            """
+                        }
+                    }
                 }
             }
         }
@@ -176,8 +104,9 @@ pipeline {
 
     post {
         always {
-            sh 'docker system prune -f --volumes || true'
-            archiveArtifacts artifacts: "${WORKSPACE_DIR}/Server/.env, ${WORKSPACE_DIR}/docker-compose.yml", allowEmptyArchive: true
+            dir(INFRA_DIR) {
+                sh 'docker-compose down --volumes --remove-orphans || true'
+            }
         }
     }
 }
