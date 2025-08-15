@@ -1,17 +1,21 @@
-FROM jenkins/jenkins:lts
+# Étape 1: Utiliser une image Node.js officielle comme base
+FROM node:18-alpine
 
-USER root
+# Définir le répertoire de travail à l'intérieur du conteneur
+WORKDIR /app
 
-# Install curl and docker-compose
-RUN apt-get update && apt-get install -y curl && \
-    curl -SL https://github.com/docker/compose/releases/download/v2.39.1/docker-compose-linux-x86_64 -o /usr/local/bin/docker-compose && \
-    chmod +x /usr/local/bin/docker-compose
+# Copier les fichiers de dépendances pour optimiser le cache de Docker
+COPY package.json ./
+COPY package-lock.json ./
 
-# Install Docker CLI inside Jenkins
-RUN apt-get install -y docker.io
+# Installer les dépendances du projet
+RUN npm install --production
 
-# Add Jenkins user to Docker group
-RUN usermod -aG docker jenkins
+# Copier tout le reste du code de l'application
+COPY . .
 
-USER jenkins
+# Exposer le port sur lequel l'application va tourner
+EXPOSE 5000
 
+# La commande pour démarrer l'application quand le conteneur se lance
+CMD [ "node", "server.js" ]

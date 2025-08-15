@@ -1,5 +1,3 @@
-// Début du Pipeline
-
 pipeline {
     agent any
 
@@ -104,9 +102,9 @@ scrape_configs:
 
     post {
         always {
-            dir(INFRA_DIR) {
-                sh 'docker-compose down --volumes --remove-orphans || true'
-            }
+            echo "Pipeline terminé. Les services restent actifs."
+            // On peut garder l'archivage, c'est utile.
+            archiveArtifacts artifacts: "${SERVER_DIR}/.env, ${INFRA_DIR}/prometheus.yml, ${INFRA_DIR}/docker-compose.yml", allowEmptyArchive: true
         }
     }
 }
