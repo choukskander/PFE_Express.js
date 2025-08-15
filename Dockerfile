@@ -1,21 +1,29 @@
-# Étape 1: Utiliser une image Node.js officielle comme base
+# Étape 1: Partir d'une image Node.js officielle et légère
 FROM node:18-alpine
 
-# Définir le répertoire de travail à l'intérieur du conteneur
+# Étape 2: Définir le répertoire de travail dans le conteneur
 WORKDIR /app
 
-# Copier les fichiers de dépendances pour optimiser le cache de Docker
+# Étape 3: Copier les fichiers de dépendances pour utiliser le cache Docker
 COPY package.json ./
 COPY package-lock.json ./
 
-# Installer les dépendances du projet
+# Étape 4: Installer uniquement les dépendances de production
 RUN npm install --production
 
-# Copier tout le reste du code de l'application
+# Étape 5: Copier tout le code de l'application
 COPY . .
 
-# Exposer le port sur lequel l'application va tourner
+# ==============================================================
+# === CAMÉRA DE SURVEILLANCE : On vérifie les fichiers copiés ===
+# ==============================================================
+# Cette commande va lister tous les fichiers dans /app pour PROUVER
+# que server.js est bien là.
+RUN ls -la
+# ==============================================================
+
+# Étape 6: Indiquer que le conteneur écoutera sur le port 5000
 EXPOSE 5000
 
-# La commande pour démarrer l'application quand le conteneur se lance
+# Étape 7: Commande pour démarrer l'application
 CMD [ "node", "server.js" ]
