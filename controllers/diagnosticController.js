@@ -14,18 +14,50 @@ const normalizeString = (str) => {
 };
 
 // Fonction pour détecter le chemin de Python
+// const getPythonPath = () => {
+//   try {
+//     const pythonPath = execSync('where python', { encoding: 'utf8' }).split('\n')[0].trim();
+//     if (pythonPath && require('fs').existsSync(pythonPath)) {
+//       console.log(`✅ Python path detected: ${pythonPath}`);
+//       return pythonPath;
+//     }
+//     throw new Error('Python not found in system PATH');
+//   } catch (error) {
+//     console.error('❌ Error detecting Python path:', error.message);
+//     throw new Error('Python executable not found. Please install Python and ensure it is in your system PATH.');
+//   }
+// };
+// Fonction pour détecter le chemin de Python
 const getPythonPath = () => {
   try {
-    const pythonPath = execSync('where python', { encoding: 'utf8' }).split('\n')[0].trim();
-    if (pythonPath && require('fs').existsSync(pythonPath)) {
-      console.log(`✅ Python path detected: ${pythonPath}`);
-      return pythonPath;
+    // Essaye d'abord avec "where python" (Windows)
+    const pythonPathWin = execSync('where python', { encoding: 'utf8' })
+      .split('\n')[0]
+      .trim();
+    if (pythonPathWin && require('fs').existsSync(pythonPathWin)) {
+      console.log(`✅ Python path detected (Windows): ${pythonPathWin}`);
+      return pythonPathWin;
     }
-    throw new Error('Python not found in system PATH');
   } catch (error) {
-    console.error('❌ Error detecting Python path:', error.message);
-    throw new Error('Python executable not found. Please install Python and ensure it is in your system PATH.');
+    console.warn('⚠️ Python non trouvé avec "where python" (Windows), tentative Linux...');
   }
+
+  try {
+    // Si échec → Linux/Mac avec "which python3"
+    const pythonPathLinux = execSync('which python3', { encoding: 'utf8' })
+      .split('\n')[0]
+      .trim();
+    if (pythonPathLinux && require('fs').existsSync(pythonPathLinux)) {
+      console.log(`✅ Python path detected (Linux/Mac): ${pythonPathLinux}`);
+      return pythonPathLinux;
+    }
+  } catch (error) {
+    console.error('❌ Error detecting Python path (Linux):', error.message);
+  }
+
+  throw new Error(
+    'Python executable not found. Please install Python and ensure it is in your system PATH.'
+  );
 };
 
 exports.getSymptoms = asyncHandler(async (req, res) => {
