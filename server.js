@@ -113,7 +113,7 @@ app.use(
   cors({
     origin: [
       "http://localhost:3000", // développement local
-      process.env.FRONTEND_URL, // ton site Netlify/Vercel une fois déployé
+      "https://rdv-med.netlify.app", // ton site Netlify/Vercel une fois déployé
     ],
     credentials: true,
   })
