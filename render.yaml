@@ -1,0 +1,8 @@
+services:
+  - type: web
+    name: PFE_Express.js-2
+    env: node
+    buildCommand: |
+      apt-get update && apt-get install -y python3 python3-pip
+      npm install
+    startCommand: node server.js
